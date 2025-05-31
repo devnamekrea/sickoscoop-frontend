@@ -1,169 +1,60 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { MessageSquare, Heart, Share2, User, Settings, Shield, Send, Home, Users, Lock, Eye, EyeOff, AlertCircle } from 'lucide-react';
-
-// API Configuration
-const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000/api';
-const SOCKET_URL = process.env.REACT_APP_SOCKET_URL || 'http://localhost:5000';
-
-// API Helper Functions
-const apiCall = async (endpoint, options = {}) => {
-  const token = localStorage.getItem('authToken');
-  const config = {
-    headers: {
-      'Content-Type': 'application/json',
-      ...(token && { Authorization: `Bearer ${token}` }),
-      ...options.headers,
-    },
-    ...options,
-  };
-
-  try {
-    const response = await fetch(`${API_BASE_URL}${endpoint}`, config);
-    const data = await response.json();
-    
-    if (!response.ok) {
-      throw new Error(data.error || 'Network error');
-    }
-    
-    return data;
-  } catch (error) {
-    console.error('API Error:', error);
-    throw error;
-  }
-};
+import { useAuth } from './hooks/useAuth';
+import { apiCall } from './config/api';
 
 const SickoScoopApp = () => {
-  const [currentUser, setCurrentUser] = useState(null);
+  // Replace mock authentication with real authentication
+  const {
+    user,
+    loading: authLoading,
+    error: authError,
+    isLoggedIn,
+    login,
+    register,
+    logout: authLogout,
+    clearError
+  } = useAuth();
+
+  // Map user to currentUser for backward compatibility
+  const currentUser = user;
+  const SOCKET_URL = process.env.REACT_APP_SOCKET_URL || 'http://localhost:5000';
+
+  // Keep your existing UI state
   const [currentView, setCurrentView] = useState('landing');
   const [posts, setPosts] = useState([]);
   const [newPost, setNewPost] = useState('');
   const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [loginForm, setLoginForm] = useState({ email: '', password: '' });
-  const [signupForm, setSignupForm] = useState({ name: '', email: '', password: '' });
+  // FIXED: Add confirmPassword to the initial state
+  const [signupForm, setSignupForm] = useState({ name: '', email: '', password: '', confirmPassword: '' });
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
+  const [success, setSuccess] = useState('');
   const [selectedChat, setSelectedChat] = useState(null);
   const [chatMessage, setChatMessage] = useState('');
   const [chats, setChats] = useState([]);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState('');
   const [socket, setSocket] = useState(null);
   const messagesEndRef = useRef(null);
 
-  // Initialize socket connection
-  useEffect(() => {
-    if (currentUser && !socket) {
-      // Dynamic import for socket.io-client
-      import('socket.io-client').then((io) => {
-        const newSocket = io.default(SOCKET_URL);
-        setSocket(newSocket);
-
-        newSocket.on('new-message', (message) => {
-          if (selectedChat && message.chatId === selectedChat._id) {
-            setSelectedChat(prev => ({
-              ...prev,
-              messages: [...prev.messages, message]
-            }));
-          }
-          loadChats(); // Refresh chat list
-        });
-
-        return () => newSocket.close();
-      });
-    }
-  }, [currentUser, selectedChat]);
-
-  // Auto-scroll chat messages
-  useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-  }, [selectedChat?.messages]);
-
-  // Check for existing auth token on app load
-  useEffect(() => {
-    const token = localStorage.getItem('authToken');
-    const userData = localStorage.getItem('userData');
-    
-    if (token && userData) {
-      try {
-        const user = JSON.parse(userData);
-        setCurrentUser(user);
-        setCurrentView('feed');
-        loadPosts();
-        loadChats();
-      } catch (error) {
-        localStorage.removeItem('authToken');
-        localStorage.removeItem('userData');
-      }
-    }
-  }, []);
+  // MOVE ALL FUNCTIONS INSIDE THE COMPONENT
 
   const handleError = (error) => {
     setError(error.message || 'An error occurred');
     setTimeout(() => setError(''), 5000);
   };
 
-  const handleLogin = async () => {
-    setLoading(true);
-    setError('');
-    
-    try {
-      const response = await apiCall('/auth/login', {
-        method: 'POST',
-        body: JSON.stringify(loginForm),
-      });
-
-      localStorage.setItem('authToken', response.token);
-      localStorage.setItem('userData', JSON.stringify(response.user));
-      setCurrentUser(response.user);
-      setCurrentView('feed');
-      await loadPosts();
-      await loadChats();
-    } catch (error) {
-      handleError(error);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleSignup = async () => {
-    setLoading(true);
-    setError('');
-    
-    try {
-      const response = await apiCall('/auth/signup', {
-        method: 'POST',
-        body: JSON.stringify(signupForm),
-      });
-
-      localStorage.setItem('authToken', response.token);
-      localStorage.setItem('userData', JSON.stringify(response.user));
-      setCurrentUser(response.user);
-      setCurrentView('feed');
-      await loadPosts();
-    } catch (error) {
-      handleError(error);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleLogout = () => {
-    localStorage.removeItem('authToken');
-    localStorage.removeItem('userData');
-    setCurrentUser(null);
-    setCurrentView('landing');
-    setPosts([]);
-    setChats([]);
-    if (socket) {
-      socket.disconnect();
-      setSocket(null);
-    }
-  };
-
   const loadPosts = async () => {
     try {
+      setLoading(true);
       const response = await apiCall('/posts');
-      setPosts(response);
+      setPosts(response.posts || response); // Handle different response formats
     } catch (error) {
-      handleError(error);
+      setError('Failed to load posts. Please try again.');
+      console.error('Load posts error:', error);
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -178,7 +69,7 @@ const SickoScoopApp = () => {
 
   const handlePost = async () => {
     if (!newPost.trim()) return;
-    
+
     setLoading(true);
     try {
       const response = await apiCall('/posts', {
@@ -201,11 +92,13 @@ const SickoScoopApp = () => {
         method: 'POST',
       });
 
-      setPosts(posts.map(post => 
-        post._id === postId 
-          ? { ...post, likes: response.liked 
-              ? [...post.likes, currentUser.id] 
-              : post.likes.filter(id => id !== currentUser.id) }
+      setPosts(posts.map(post =>
+        post._id === postId
+          ? {
+            ...post, likes: response.liked
+              ? [...post.likes, currentUser.id]
+              : post.likes.filter(id => id !== currentUser.id)
+          }
           : post
       ));
     } catch (error) {
@@ -230,11 +123,148 @@ const SickoScoopApp = () => {
     const now = new Date();
     const postDate = new Date(date);
     const diffInMinutes = Math.floor((now - postDate) / (1000 * 60));
-    
+
     if (diffInMinutes < 1) return 'now';
     if (diffInMinutes < 60) return `${diffInMinutes}m ago`;
     if (diffInMinutes < 1440) return `${Math.floor(diffInMinutes / 60)}h ago`;
     return `${Math.floor(diffInMinutes / 1440)}d ago`;
+  };
+
+  // Initialize socket connection
+  useEffect(() => {
+    if (currentUser && !socket) {
+      // Dynamic import for socket.io-client
+      import('socket.io-client').then((io) => {
+        const newSocket = io.default(SOCKET_URL);
+        setSocket(newSocket);
+
+        newSocket.on('new-message', (message) => {
+          if (selectedChat && message.chatId === selectedChat._id) {
+            setSelectedChat(prev => ({
+              ...prev,
+              messages: [...prev.messages, message]
+            }));
+          }
+          loadChats(); // Refresh chat list
+        });
+
+        return () => newSocket.close();
+      });
+    }
+  }, [currentUser, selectedChat, socket, SOCKET_URL]);
+
+  // Auto-scroll chat messages
+  useEffect(() => {
+    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+  }, [selectedChat?.messages]);
+
+  // Check for existing auth token on app load
+  useEffect(() => {
+    const token = localStorage.getItem('authToken');
+    const userData = localStorage.getItem('userData');
+
+    if (token && userData && !currentUser) {
+      try {
+        const user = JSON.parse(userData);
+        // Note: You'll need to implement setCurrentUser in your useAuth hook
+        // or handle this differently based on your auth implementation
+        setCurrentView('feed');
+        loadPosts();
+        loadChats();
+      } catch (error) {
+        localStorage.removeItem('authToken');
+        localStorage.removeItem('userData');
+      }
+    }
+  }, [currentUser]);
+
+  const handleLogin = async () => {
+    setLoading(true);
+    clearError();
+    setError('');
+
+    const result = await login(loginForm);
+
+    if (result.success) {
+      setCurrentView('feed');
+      setSuccess('Successfully logged in!');
+      setLoginForm({ email: '', password: '' }); // Clear form
+      await loadPosts();
+      await loadChats();
+    } else {
+      setError(result.error || 'Login failed');
+    }
+
+    setLoading(false);
+  };
+
+  const handleSignup = async () => {
+    setLoading(true);
+    clearError();
+    setError('');
+
+    // Validate required fields
+    if (!signupForm.name.trim()) {
+      setError('Please enter your name.');
+      setLoading(false);
+      return;
+    }
+
+    if (!signupForm.email.trim()) {
+      setError('Please enter your email.');
+      setLoading(false);
+      return;
+    }
+
+    if (!signupForm.password) {
+      setError('Please enter a password.');
+      setLoading(false);
+      return;
+    }
+
+    if (signupForm.password.length < 6) {
+      setError('Password must be at least 6 characters long.');
+      setLoading(false);
+      return;
+    }
+
+    // Check if passwords match
+    if (signupForm.password !== signupForm.confirmPassword) {
+      setError('Passwords do not match.');
+      setLoading(false);
+      return;
+    }
+
+    const result = await register({
+      name: signupForm.name,
+      email: signupForm.email,
+      password: signupForm.password,
+    });
+
+    if (result.success) {
+      setCurrentView('feed');
+      setSuccess('Account created successfully!');
+      setSignupForm({ name: '', email: '', password: '', confirmPassword: '' });
+      await loadPosts();
+      await loadChats();
+    } else {
+      setError(result.error || 'Registration failed');
+    }
+
+    setLoading(false);
+  };
+
+  // FIXED: Remove nested function definition
+  const handleLogout = () => {
+    authLogout(); // Use the real logout function
+    setCurrentView('landing');
+    setPosts([]);
+    setChats([]);
+    if (socket) {
+      socket.disconnect();
+    }
+    setSocket(null);
+    setSuccess('Logged out successfully!');
   };
 
   const ErrorAlert = () => error && (
@@ -251,7 +281,7 @@ const SickoScoopApp = () => {
   const renderLandingPage = () => (
     <div className="min-h-screen bg-gradient-to-br from-purple-900 via-indigo-900 to-blue-900 relative overflow-hidden">
       <ErrorAlert />
-      
+
       {/* Ornate Background Pattern */}
       <div className="absolute inset-0 opacity-20">
         <div className="absolute top-0 left-0 w-full h-full bg-gradient-to-br from-yellow-400 via-transparent to-purple-600"></div>
@@ -278,7 +308,7 @@ const SickoScoopApp = () => {
             STOP STALKERS ON SICKOSCOOP
           </h2>
           <p className="text-lg text-white/90 leading-relaxed mb-6">
-            Join a revolutionary social platform built on transparency, genuine connections, and user safety. 
+            Join a revolutionary social platform built on transparency, genuine connections, and user safety.
             Our advanced protection systems ensure authentic communication while keeping predators at bay.
           </p>
           <div className="flex items-center justify-center space-x-4 text-yellow-300">
@@ -313,7 +343,7 @@ const SickoScoopApp = () => {
   const renderAuth = (type) => (
     <div className="min-h-screen bg-gradient-to-br from-purple-900 via-indigo-900 to-blue-900 flex items-center justify-center px-4">
       <ErrorAlert />
-      
+
       <div className="bg-black/40 backdrop-blur-md border border-yellow-400/30 rounded-2xl p-8 max-w-md w-full shadow-2xl">
         <div className="text-center mb-6">
           <div className="w-16 h-16 mx-auto mb-4 bg-gradient-to-br from-yellow-400 to-yellow-600 rounded-full flex items-center justify-center">
@@ -328,19 +358,21 @@ const SickoScoopApp = () => {
         </div>
 
         <div>
+          {/* Name Field - Only for Signup */}
           {type === 'signup' && (
             <div className="mb-4">
               <input
                 type="text"
                 placeholder="Full Name"
                 value={signupForm.name}
-                onChange={(e) => setSignupForm({...signupForm, name: e.target.value})}
+                onChange={(e) => setSignupForm({ ...signupForm, name: e.target.value })}
                 className="w-full px-4 py-3 bg-white/10 border border-yellow-400/30 rounded-xl text-white placeholder-white/50 focus:outline-none focus:border-yellow-400 focus:bg-white/20 transition-all"
                 disabled={loading}
               />
             </div>
           )}
-          
+
+          {/* Email Field */}
           <div className="mb-4">
             <input
               type="email"
@@ -348,9 +380,9 @@ const SickoScoopApp = () => {
               value={type === 'login' ? loginForm.email : signupForm.email}
               onChange={(e) => {
                 if (type === 'login') {
-                  setLoginForm({...loginForm, email: e.target.value});
+                  setLoginForm({ ...loginForm, email: e.target.value });
                 } else {
-                  setSignupForm({...signupForm, email: e.target.value});
+                  setSignupForm({ ...signupForm, email: e.target.value });
                 }
               }}
               className="w-full px-4 py-3 bg-white/10 border border-yellow-400/30 rounded-xl text-white placeholder-white/50 focus:outline-none focus:border-yellow-400 focus:bg-white/20 transition-all"
@@ -358,16 +390,17 @@ const SickoScoopApp = () => {
             />
           </div>
 
-          <div className="mb-6 relative">
+          {/* Password Field */}
+          <div className="mb-4 relative">
             <input
               type={showPassword ? "text" : "password"}
               placeholder="Password"
               value={type === 'login' ? loginForm.password : signupForm.password}
               onChange={(e) => {
                 if (type === 'login') {
-                  setLoginForm({...loginForm, password: e.target.value});
+                  setLoginForm({ ...loginForm, password: e.target.value });
                 } else {
-                  setSignupForm({...signupForm, password: e.target.value});
+                  setSignupForm({ ...signupForm, password: e.target.value });
                 }
               }}
               className="w-full px-4 py-3 bg-white/10 border border-yellow-400/30 rounded-xl text-white placeholder-white/50 focus:outline-none focus:border-yellow-400 focus:bg-white/20 transition-all pr-12"
@@ -381,6 +414,30 @@ const SickoScoopApp = () => {
               {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
             </button>
           </div>
+
+          {/* Confirm Password Field - Only for Signup */}
+          {type === 'signup' && (
+            <div className="mb-6 relative">
+              <input
+                type={showConfirmPassword ? "text" : "password"}
+                placeholder="Confirm Password"
+                value={signupForm.confirmPassword}
+                onChange={(e) => setSignupForm({ ...signupForm, confirmPassword: e.target.value })}
+                className="w-full px-4 py-3 bg-white/10 border border-yellow-400/30 rounded-xl text-white placeholder-white/50 focus:outline-none focus:border-yellow-400 focus:bg-white/20 transition-all pr-12"
+                disabled={loading}
+              />
+              <button
+                onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                className="absolute right-3 top-1/2 transform -translate-y-1/2 text-white/50 hover:text-yellow-400 transition-colors"
+                disabled={loading}
+              >
+                {showConfirmPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
+              </button>
+            </div>
+          )}
+
+          {/* For login, add margin bottom to password field */}
+          {type === 'login' && <div className="mb-2"></div>}
 
           <button
             onClick={type === 'login' ? handleLogin : handleSignup}
@@ -425,19 +482,17 @@ const SickoScoopApp = () => {
         <div className="flex items-center space-x-6">
           <button
             onClick={() => setCurrentView('feed')}
-            className={`flex items-center space-x-2 px-3 py-2 rounded-lg transition-colors ${
-              currentView === 'feed' ? 'bg-yellow-400/20 text-yellow-300' : 'text-white/70 hover:text-yellow-300'
-            }`}
+            className={`flex items-center space-x-2 px-3 py-2 rounded-lg transition-colors ${currentView === 'feed' ? 'bg-yellow-400/20 text-yellow-300' : 'text-white/70 hover:text-yellow-300'
+              }`}
           >
             <Home className="w-5 h-5" />
             <span>Feed</span>
           </button>
-          
+
           <button
             onClick={() => setCurrentView('profile')}
-            className={`flex items-center space-x-2 px-3 py-2 rounded-lg transition-colors ${
-              currentView === 'profile' ? 'bg-yellow-400/20 text-yellow-300' : 'text-white/70 hover:text-yellow-300'
-            }`}
+            className={`flex items-center space-x-2 px-3 py-2 rounded-lg transition-colors ${currentView === 'profile' ? 'bg-yellow-400/20 text-yellow-300' : 'text-white/70 hover:text-yellow-300'
+              }`}
           >
             <User className="w-5 h-5" />
             <span>Profile</span>
@@ -448,9 +503,8 @@ const SickoScoopApp = () => {
               setCurrentView('chat');
               loadChats();
             }}
-            className={`flex items-center space-x-2 px-3 py-2 rounded-lg transition-colors ${
-              currentView === 'chat' ? 'bg-yellow-400/20 text-yellow-300' : 'text-white/70 hover:text-yellow-300'
-            }`}
+            className={`flex items-center space-x-2 px-3 py-2 rounded-lg transition-colors ${currentView === 'chat' ? 'bg-yellow-400/20 text-yellow-300' : 'text-white/70 hover:text-yellow-300'
+              }`}
           >
             <MessageSquare className="w-5 h-5" />
             <span>Chat</span>
@@ -476,7 +530,7 @@ const SickoScoopApp = () => {
     <div className="min-h-screen bg-gradient-to-br from-slate-900 via-purple-900 to-indigo-900">
       <ErrorAlert />
       {renderNavigation()}
-      
+
       <div className="max-w-2xl mx-auto px-4 py-6">
         {/* Post Creation */}
         <div className="bg-black/40 backdrop-blur-md border border-yellow-400/30 rounded-2xl p-6 mb-6 shadow-xl">
@@ -525,11 +579,10 @@ const SickoScoopApp = () => {
                   <div className="flex items-center space-x-6">
                     <button
                       onClick={() => likePost(post._id || post.id)}
-                      className={`flex items-center space-x-2 transition-colors ${
-                        post.likes?.includes(currentUser?.id) 
-                          ? 'text-red-400' 
+                      className={`flex items-center space-x-2 transition-colors ${post.likes?.includes(currentUser?.id)
+                          ? 'text-red-400'
                           : 'text-white/60 hover:text-red-400'
-                      }`}
+                        }`}
                     >
                       <Heart className="w-5 h-5" />
                       <span>{Array.isArray(post.likes) ? post.likes.length : post.likes || 0}</span>
@@ -546,7 +599,7 @@ const SickoScoopApp = () => {
               </div>
             </div>
           ))}
-          
+
           {posts.length === 0 && (
             <div className="text-center py-12">
               <div className="text-white/50 text-lg mb-2">No posts yet</div>
@@ -562,7 +615,7 @@ const SickoScoopApp = () => {
     <div className="min-h-screen bg-gradient-to-br from-slate-900 via-purple-900 to-indigo-900">
       <ErrorAlert />
       {renderNavigation()}
-      
+
       <div className="max-w-4xl mx-auto px-4 py-6">
         <div className="bg-black/40 backdrop-blur-md border border-yellow-400/30 rounded-2xl p-8 shadow-xl">
           <div className="flex items-start space-x-6 mb-8">
@@ -602,7 +655,7 @@ const SickoScoopApp = () => {
                 </div>
               ))}
             </div>
-            
+
             {posts.filter(post => post.author?.name === currentUser?.name).length === 0 && (
               <div className="text-center py-8 text-white/50">
                 You haven't posted anything yet. Share your first authentic thought!
@@ -618,7 +671,7 @@ const SickoScoopApp = () => {
     <div className="min-h-screen bg-gradient-to-br from-slate-900 via-purple-900 to-indigo-900">
       <ErrorAlert />
       {renderNavigation()}
-      
+
       <div className="max-w-6xl mx-auto px-4 py-6">
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6 h-[calc(100vh-200px)]">
           {/* Chat List */}
@@ -628,7 +681,7 @@ const SickoScoopApp = () => {
               {chats.map(chat => {
                 const otherUser = chat.participants?.find(p => p._id !== currentUser?.id);
                 const lastMessage = chat.messages?.[chat.messages.length - 1];
-                
+
                 return (
                   <button
                     key={chat._id}
@@ -638,9 +691,8 @@ const SickoScoopApp = () => {
                         socket.emit('join-chat', chat._id);
                       }
                     }}
-                    className={`w-full p-3 rounded-xl text-left transition-colors ${
-                      selectedChat?._id === chat._id ? 'bg-yellow-400/20' : 'hover:bg-white/5'
-                    }`}
+                    className={`w-full p-3 rounded-xl text-left transition-colors ${selectedChat?._id === chat._id ? 'bg-yellow-400/20' : 'hover:bg-white/5'
+                      }`}
                   >
                     <div className="flex items-center space-x-3">
                       <div className="w-10 h-10 bg-gradient-to-br from-indigo-500 to-purple-600 rounded-full flex items-center justify-center">
@@ -661,7 +713,7 @@ const SickoScoopApp = () => {
                   </button>
                 );
               })}
-              
+
               {chats.length === 0 && (
                 <div className="text-center py-8 text-white/50">
                   No conversations yet. Start connecting with others!
@@ -697,20 +749,18 @@ const SickoScoopApp = () => {
                   <div className="space-y-4">
                     {selectedChat.messages?.map((message, index) => {
                       const isOwnMessage = message.sender?._id === currentUser?.id || message.sender === currentUser?.id;
-                      
+
                       return (
                         <div key={index} className={`flex ${isOwnMessage ? 'justify-end' : 'justify-start'}`}>
-                          <div className={`rounded-2xl p-3 max-w-xs ${
-                            isOwnMessage 
+                          <div className={`rounded-2xl p-3 max-w-xs ${isOwnMessage
                               ? 'bg-gradient-to-r from-yellow-500 to-yellow-600 rounded-tr-md'
                               : 'bg-white/10 rounded-tl-md'
-                          }`}>
+                            }`}>
                             <p className={isOwnMessage ? 'text-purple-900' : 'text-white/90'}>
                               {message.content}
                             </p>
-                            <span className={`text-xs ${
-                              isOwnMessage ? 'text-purple-700' : 'text-white/50'
-                            }`}>
+                            <span className={`text-xs ${isOwnMessage ? 'text-purple-700' : 'text-white/50'
+                              }`}>
                               {formatTimeAgo(message.createdAt)}
                             </span>
                           </div>
@@ -736,7 +786,7 @@ const SickoScoopApp = () => {
                         }
                       }}
                     />
-                    <button 
+                    <button
                       onClick={sendMessage}
                       disabled={!chatMessage.trim()}
                       className="p-2 bg-gradient-to-r from-yellow-500 to-yellow-600 text-purple-900 rounded-xl hover:from-yellow-400 hover:to-yellow-500 transition-all disabled:opacity-50"
@@ -760,26 +810,36 @@ const SickoScoopApp = () => {
     </div>
   );
 
-  // Main Render
-  if (!currentUser) {
-    switch (currentView) {
-      case 'login':
-        return renderAuth('login');
-      case 'signup':
-        return renderAuth('signup');
-      default:
-        return renderLandingPage();
-    }
-  }
+  // Main return statement
+  return (
+    <div className="relative">
+      {/* Authentication Logic */}
+      {!isLoggedIn ? (
+        // Not logged in - show auth views
+        <>
+          {currentView === 'login' && renderAuth('login')}
+          {currentView === 'signup' && renderAuth('signup')}
+          {currentView === 'landing' && renderLandingPage()}
+        </>
+      ) : (
+        // Logged in - show main app views
+        <>
+          {currentView === 'profile' && renderProfile()}
+          {currentView === 'chat' && renderChat()}
+          {currentView === 'feed' && renderFeed()}
+          {/* Add other authenticated views as needed */}
+        </>
+      )}
 
-  switch (currentView) {
-    case 'profile':
-      return renderProfile();
-    case 'chat':
-      return renderChat();
-    default:
-      return renderFeed();
-  }
+      {/* Notifications */}
+      {error && (
+        <div className="notification error">{error}</div>
+      )}
+      {success && (
+        <div className="notification success">{success}</div>
+      )}
+    </div>
+  );
 };
 
 export default SickoScoopApp;
