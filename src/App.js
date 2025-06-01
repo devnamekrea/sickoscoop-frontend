@@ -1,7 +1,9 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { Heart, MessageCircle, Share2, Send, Upload, Image, Video, FileText, Mic, User, Search, Settings, Plus, X } from 'lucide-react';
 
-const API_BASE = 'https://sickoscoop-backend-deo45.ondigitalocean.app/api';
+const API_BASE = window.location.hostname === 'localhost' 
+  ? 'http://localhost:3001/api'
+  : 'https://sickoscoop-backend-deo45.ondigitalocean.app/api';
 
 // Move LandingPage outside to prevent re-creation
 const LandingPage = React.memo(({ 
@@ -51,11 +53,6 @@ const LandingPage = React.memo(({
         <p className="text-xl md:text-2xl text-slate-300 leading-relaxed">
           revelation & transparency
         </p>
-      </div>
-
-      {/* Demo Login Info */}
-      <div className="mb-4 p-3 bg-blue-500/20 border border-blue-500/50 rounded-lg text-blue-300 max-w-md">
-        Demo Login: demo@sickoscoop.com / demo
       </div>
 
       {/* Error Display */}
@@ -211,6 +208,7 @@ const SickoScoopApp = () => {
   const [registerForm, setRegisterForm] = useState({ username: '', email: '', password: '' });
   const [showRegister, setShowRegister] = useState(false);
   const [isClient, setIsClient] = useState(false);
+  const [apiStatus, setApiStatus] = useState('unknown'); // 'connected', 'disconnected', 'unknown'
   const fileInputRef = useRef(null);
 
   // Fix hydration issues by ensuring client-side only operations
@@ -251,11 +249,15 @@ const SickoScoopApp = () => {
     }
   };
 
-  // API call helper function with better error handling
+  // Enhanced API call helper with better error handling and timeout
   const apiCall = async (endpoint, options = {}) => {
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 10000); // 10 second timeout
+
     try {
       const authToken = getStorageItem('authToken');
       const response = await fetch(`${API_BASE}${endpoint}`, {
+        signal: controller.signal,
         headers: {
           'Content-Type': 'application/json',
           'Authorization': authToken ? `Bearer ${authToken}` : '',
@@ -264,20 +266,68 @@ const SickoScoopApp = () => {
         ...options,
       });
 
-      if (response.status === 401) {
-        handleLogout();
-        throw new Error('Session expired. Please log in again.');
-      }
+      clearTimeout(timeoutId);
 
+      // Check if response is ok first
       if (!response.ok) {
-        const errorData = await response.json().catch(() => ({ message: 'Request failed' }));
-        throw new Error(errorData.message || 'Request failed');
+        let errorMessage = 'Request failed';
+        
+        try {
+          const errorData = await response.json();
+          errorMessage = errorData.message || errorData.error || `HTTP ${response.status}: ${response.statusText}`;
+        } catch (e) {
+          errorMessage = `HTTP ${response.status}: ${response.statusText}`;
+        }
+
+        if (response.status === 401) {
+          handleLogout();
+          throw new Error('Session expired. Please log in again.');
+        }
+
+        throw new Error(errorMessage);
       }
 
-      return await response.json();
+      // Try to parse JSON response
+      const responseText = await response.text();
+      if (!responseText) {
+        return {}; // Empty response
+      }
+
+      try {
+        return JSON.parse(responseText);
+      } catch (e) {
+        console.warn('Non-JSON response received:', responseText);
+        return { message: responseText };
+      }
+
     } catch (error) {
-      console.error('API call failed:', error);
+      clearTimeout(timeoutId);
+      
+      if (error.name === 'AbortError') {
+        setApiStatus('disconnected');
+        throw new Error('Request timeout. Please check your connection.');
+      }
+      
+      if (error.message.includes('fetch')) {
+        setApiStatus('disconnected');
+        throw new Error('Network error. Please check your connection.');
+      }
+      
+      setApiStatus('disconnected');
       throw error;
+    }
+  };
+
+  // Test API connection
+  const testApiConnection = async () => {
+    try {
+      await apiCall('/health');
+      setApiStatus('connected');
+      return true;
+    } catch (error) {
+      console.error('API connection test failed:', error);
+      setApiStatus('disconnected');
+      return false;
     }
   };
 
@@ -285,19 +335,39 @@ const SickoScoopApp = () => {
   useEffect(() => {
     if (!isClient) return;
 
-    const initializeApp = () => {
+    const initializeApp = async () => {
+      // Test API connection first
+      const isApiConnected = await testApiConnection();
+      
       const authToken = getStorageItem('authToken');
       const userData = getStorageItem('userData');
 
-      if (authToken && userData) {
+      if (authToken && userData && isApiConnected) {
         try {
           const userObj = JSON.parse(userData);
-          setToken(authToken);
-          setUser(userObj);
-          setIsLoggedIn(true);
-          setCurrentView('feed');
-          loadPosts();
-          loadChats();
+          
+          // Validate token with backend
+          try {
+            const response = await apiCall('/auth/verify', {
+              method: 'POST',
+              body: JSON.stringify({ token: authToken }),
+            });
+            
+            if (response.valid) {
+              setToken(authToken);
+              setUser(response.user || userObj);
+              setIsLoggedIn(true);
+              setCurrentView('feed');
+              await loadPosts();
+              await loadChats();
+              return;
+            }
+          } catch (error) {
+            console.error('Token validation failed:', error);
+            // Token is invalid, clear it
+            removeStorageItem('authToken');
+            removeStorageItem('userData');
+          }
         } catch (error) {
           console.error('Invalid stored user data:', error);
           removeStorageItem('authToken');
@@ -305,7 +375,7 @@ const SickoScoopApp = () => {
         }
       }
 
-      // Always load mock data for demo purposes
+      // Load mock data for demo
       loadMockData();
     };
 
@@ -369,27 +439,52 @@ const SickoScoopApp = () => {
   };
 
   const loadPosts = async () => {
+    if (apiStatus === 'disconnected') return;
+    
     try {
       const response = await apiCall('/posts');
-      const postsData = Array.isArray(response) ? response : response.posts || [];
+      let postsData = [];
+      
+      if (Array.isArray(response)) {
+        postsData = response;
+      } else if (response.posts && Array.isArray(response.posts)) {
+        postsData = response.posts;
+      } else if (response.data && Array.isArray(response.data)) {
+        postsData = response.data;
+      }
+      
       if (postsData.length > 0) {
         setPosts(postsData);
+        setApiStatus('connected');
       }
     } catch (error) {
       console.error('Load posts error:', error);
-      // Keep mock data on API failure
+      // Keep existing posts or mock data on API failure
     }
   };
 
   const loadChats = async () => {
+    if (apiStatus === 'disconnected') return;
+    
     try {
       const response = await apiCall('/conversations');
-      if (response && response.length > 0) {
-        setChats(response);
+      let chatsData = [];
+      
+      if (Array.isArray(response)) {
+        chatsData = response;
+      } else if (response.conversations && Array.isArray(response.conversations)) {
+        chatsData = response.conversations;
+      } else if (response.data && Array.isArray(response.data)) {
+        chatsData = response.data;
+      }
+      
+      if (chatsData.length > 0) {
+        setChats(chatsData);
+        setApiStatus('connected');
       }
     } catch (error) {
       console.error('Load chats error:', error);
-      // Keep mock data on API failure
+      // Keep existing chats or mock data on API failure
     }
   };
 
@@ -403,15 +498,27 @@ const SickoScoopApp = () => {
     setError('');
 
     try {
+      // Test API connection first
+      const isApiConnected = await testApiConnection();
+      
+      if (!isApiConnected) {
+        throw new Error('Cannot connect to server. Using demo mode.');
+      }
+
       const response = await fetch(`${API_BASE}/auth/login`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(loginForm),
       });
 
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.message || `Login failed: ${response.statusText}`);
+      }
+
       const data = await response.json();
 
-      if (response.ok) {
+      if (data.token && data.user) {
         setToken(data.token);
         setUser(data.user);
         setStorageItem('authToken', data.token);
@@ -419,16 +526,24 @@ const SickoScoopApp = () => {
         setIsLoggedIn(true);
         setCurrentView('feed');
         setLoginForm({ email: '', password: '' });
-        await loadPosts();
-        await loadChats();
+        setApiStatus('connected');
+        
+        // Load real data
+        await Promise.all([loadPosts(), loadChats()]);
       } else {
-        setError(data.message || 'Login failed');
+        throw new Error('Invalid response from server');
       }
     } catch (error) {
       console.error('Login error:', error);
-      // Demo login for development
+      
+      // Demo login fallback
       if (loginForm.email === 'demo@sickoscoop.com' && loginForm.password === 'demo') {
-        const demoUser = { username: 'Demo User', email: 'demo@sickoscoop.com', verified: true };
+        const demoUser = { 
+          _id: 'demo-user',
+          username: 'Demo User', 
+          email: 'demo@sickoscoop.com', 
+          verified: true 
+        };
         setUser(demoUser);
         setToken('demo-token');
         setStorageItem('authToken', 'demo-token');
@@ -436,8 +551,10 @@ const SickoScoopApp = () => {
         setIsLoggedIn(true);
         setCurrentView('feed');
         setLoginForm({ email: '', password: '' });
+        setApiStatus('disconnected'); // Mark as disconnected since we're using demo
+        setError(''); // Clear error for demo login
       } else {
-        setError('Network error. Try demo@sickoscoop.com / demo for testing');
+        setError(error.message || 'Login failed. Try demo@sickoscoop.com / demo');
       }
     } finally {
       setLoading(false);
@@ -450,19 +567,44 @@ const SickoScoopApp = () => {
       return;
     }
 
+    // Basic email validation
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(registerForm.email)) {
+      setError('Please enter a valid email address');
+      return;
+    }
+
+    // Basic password validation
+    if (registerForm.password.length < 6) {
+      setError('Password must be at least 6 characters long');
+      return;
+    }
+
     setLoading(true);
     setError('');
 
     try {
+      // Test API connection first
+      const isApiConnected = await testApiConnection();
+      
+      if (!isApiConnected) {
+        throw new Error('Cannot connect to server. Please try again later.');
+      }
+
       const response = await fetch(`${API_BASE}/auth/register`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(registerForm),
       });
 
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.message || `Registration failed: ${response.statusText}`);
+      }
+
       const data = await response.json();
 
-      if (response.ok) {
+      if (data.token && data.user) {
         setToken(data.token);
         setUser(data.user);
         setStorageItem('authToken', data.token);
@@ -471,14 +613,16 @@ const SickoScoopApp = () => {
         setCurrentView('feed');
         setShowRegister(false);
         setRegisterForm({ username: '', email: '', password: '' });
-        await loadPosts();
-        await loadChats();
+        setApiStatus('connected');
+        
+        // Load real data
+        await Promise.all([loadPosts(), loadChats()]);
       } else {
-        setError(data.message || 'Registration failed');
+        throw new Error('Invalid response from server');
       }
     } catch (error) {
       console.error('Registration error:', error);
-      setError('Network error. Please try again or use demo login');
+      setError(error.message || 'Registration failed. Please try again.');
     } finally {
       setLoading(false);
     }
@@ -491,7 +635,15 @@ const SickoScoopApp = () => {
     setUser(null);
     setIsLoggedIn(false);
     setCurrentView('landing');
-    loadMockData(); // Reload mock data for demo
+    setApiStatus('unknown');
+    setPosts([]);
+    setChats([]);
+    setError('');
+    
+    // Reload mock data for demo
+    setTimeout(() => {
+      loadMockData();
+    }, 100);
   };
 
   const handlePost = async () => {
@@ -499,19 +651,48 @@ const SickoScoopApp = () => {
     
     setLoading(true);
     try {
-      const response = await apiCall('/posts', {
-        method: 'POST',
-        body: JSON.stringify({ content: newPost }),
-      });
+      if (apiStatus === 'connected' && token !== 'demo-token') {
+        const response = await apiCall('/posts', {
+          method: 'POST',
+          body: JSON.stringify({ content: newPost }),
+        });
 
-      setPosts([response, ...posts]);
+        if (response._id || response.id) {
+          setPosts([response, ...posts]);
+        } else {
+          throw new Error('Invalid post response');
+        }
+      } else {
+        // Mock post creation
+        const newPostData = {
+          _id: Date.now().toString(),
+          userId: { 
+            username: user?.username || 'You', 
+            verified: true,
+            _id: user?._id || 'demo-user'
+          },
+          content: newPost,
+          likes: [],
+          comments: [],
+          createdAt: new Date()
+        };
+
+        setPosts([newPostData, ...posts]);
+      }
+      
       setNewPost('');
     } catch (error) {
       console.error('Post error:', error);
-      // Mock post creation for demo
+      setError('Failed to create post. Please try again.');
+      
+      // Still create post locally as fallback
       const newPostData = {
         _id: Date.now().toString(),
-        userId: { username: user?.username || 'You', verified: true },
+        userId: { 
+          username: user?.username || 'You', 
+          verified: true,
+          _id: user?._id || 'demo-user'
+        },
         content: newPost,
         likes: [],
         comments: [],
@@ -526,17 +707,9 @@ const SickoScoopApp = () => {
   };
 
   const handleLike = async (postId) => {
-    const userId = user?.id || 'demo-user';
+    const userId = user?._id || user?.id || 'demo-user';
     
-    try {
-      await apiCall(`/posts/${postId}/like`, {
-        method: 'POST',
-      });
-    } catch (error) {
-      console.error('Like error:', error);
-    }
-
-    // Update UI optimistically
+    // Update UI optimistically first
     setPosts(posts.map(post => {
       if (post._id === postId) {
         const hasLiked = post.likes.includes(userId);
@@ -549,20 +722,58 @@ const SickoScoopApp = () => {
       }
       return post;
     }));
+
+    // Try to sync with backend
+    if (apiStatus === 'connected' && token !== 'demo-token') {
+      try {
+        await apiCall(`/posts/${postId}/like`, {
+          method: 'POST',
+        });
+      } catch (error) {
+        console.error('Like error:', error);
+        // Revert optimistic update on error
+        setPosts(posts.map(post => {
+          if (post._id === postId) {
+            const hasLiked = post.likes.includes(userId);
+            return {
+              ...post,
+              likes: hasLiked 
+                ? [...post.likes, userId]
+                : post.likes.filter(id => id !== userId)
+            };
+          }
+          return post;
+        }));
+      }
+    }
   };
 
   const handleFileUpload = async (files) => {
     console.log('Files selected:', files);
-    // TODO: Implement file upload
+    // TODO: Implement file upload to backend
   };
 
   const handleSendMessage = () => {
     if (!chatMessage.trim() || !selectedChat) return;
     
-    // Mock message sending
+    // Mock message sending for now
     console.log('Sending message:', chatMessage, 'to:', selectedChat.participants[0]?.username);
     setChatMessage('');
   };
+
+  // Connection status indicator
+  const ConnectionStatus = () => (
+    <div className={`text-xs px-2 py-1 rounded-full ${
+      apiStatus === 'connected' 
+        ? 'bg-green-500/20 text-green-400' 
+        : apiStatus === 'disconnected'
+        ? 'bg-red-500/20 text-red-400'
+        : 'bg-yellow-500/20 text-yellow-400'
+    }`}>
+      {apiStatus === 'connected' ? '● Connected' : 
+       apiStatus === 'disconnected' ? '● Demo Mode' : '● Checking...'}
+    </div>
+  );
 
   const Header = () => (
     <header className="bg-gradient-to-r from-gray-900 via-slate-900 to-zinc-900 shadow-2xl border-b border-slate-700/50">
@@ -571,6 +782,7 @@ const SickoScoopApp = () => {
           <div className="text-2xl md:text-3xl font-bold bg-gradient-to-r from-slate-300 to-purple-400 bg-clip-text text-transparent">
             SickoScoop
           </div>
+          <ConnectionStatus />
           <div className="hidden md:flex space-x-6">
             <button
               onClick={() => setCurrentView('feed')}
@@ -724,10 +936,10 @@ const SickoScoopApp = () => {
               <button 
                 onClick={() => handleLike(post._id)}
                 className={`flex items-center space-x-2 hover:text-red-400 transition-colors ${
-                  post.likes.includes(user?.id || 'demo-user') ? 'text-red-400' : ''
+                  post.likes.includes(user?._id || user?.id || 'demo-user') ? 'text-red-400' : ''
                 }`}
               >
-                <Heart className="h-5 w-5" fill={post.likes.includes(user?.id || 'demo-user') ? 'currentColor' : 'none'} />
+                <Heart className="h-5 w-5" fill={post.likes.includes(user?._id || user?.id || 'demo-user') ? 'currentColor' : 'none'} />
                 <span>{post.likes?.length || 0}</span>
               </button>
               <button className="flex items-center space-x-2 hover:text-indigo-400 transition-colors">
@@ -960,6 +1172,14 @@ const SickoScoopApp = () => {
         <div className="absolute top-20 left-1/4 w-64 h-64 bg-gradient-to-r from-purple-800 to-indigo-700 rounded-full blur-3xl animate-pulse"></div>
         <div className="absolute bottom-20 right-1/4 w-80 h-80 bg-gradient-to-r from-slate-700 to-zinc-600 rounded-full blur-3xl animate-pulse delay-1000"></div>
       </div>
+      
+      {/* Error display */}
+      {error && (
+        <div className="relative z-20 mx-auto max-w-md mt-4 p-3 bg-red-500/20 border border-red-500/50 rounded-lg text-red-300 text-center">
+          {error}
+          <button onClick={() => setError('')} className="ml-2 text-red-400 hover:text-red-300">×</button>
+        </div>
+      )}
       
       <div className="relative z-10">
         <Header />
