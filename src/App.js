@@ -1,75 +1,310 @@
-import React, { useState, useEffect, useRef } from 'react';
-import { MessageSquare, Heart, Share2, User, Settings, Shield, Send, Home, Users, Lock, Eye, EyeOff, AlertCircle } from 'lucide-react';
-import { useAuth } from './hooks/useAuth';
-import { apiCall } from './config/api';
+import React, { useState, useRef, useEffect } from 'react';
+import { Heart, MessageCircle, Share2, Send, Upload, Image, Video, FileText, Mic, User, Search, Settings, Plus, X } from 'lucide-react';
+
+const API_BASE = 'https://sickoscoop-backend-deo45.ondigitalocean.app/api';
 
 const SickoScoopApp = () => {
-  // Replace mock authentication with real authentication
-  const {
-    user,
-    loading: authLoading,
-    error: authError,
-    isLoggedIn,
-    login,
-    register,
-    logout: authLogout,
-    clearError
-  } = useAuth();
-
-  // Map user to currentUser for backward compatibility
-  const currentUser = user;
-  const SOCKET_URL = process.env.REACT_APP_SOCKET_URL || 'http://localhost:5000';
-
-  // Keep your existing UI state
   const [currentView, setCurrentView] = useState('landing');
+  const [isLoggedIn, setIsLoggedIn] = useState(false);
+  const [user, setUser] = useState(null);
+  const [token, setToken] = useState(null);
   const [posts, setPosts] = useState([]);
   const [newPost, setNewPost] = useState('');
-  const [showPassword, setShowPassword] = useState(false);
-  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
-  const [loginForm, setLoginForm] = useState({ email: '', password: '' });
-  // FIXED: Add confirmPassword to the initial state
-  const [signupForm, setSignupForm] = useState({ name: '', email: '', password: '', confirmPassword: '' });
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState('');
-  const [success, setSuccess] = useState('');
   const [selectedChat, setSelectedChat] = useState(null);
   const [chatMessage, setChatMessage] = useState('');
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
   const [chats, setChats] = useState([]);
-  const [socket, setSocket] = useState(null);
-  const messagesEndRef = useRef(null);
+  const [loginForm, setLoginForm] = useState({ email: '', password: '' });
+  const [registerForm, setRegisterForm] = useState({ username: '', email: '', password: '' });
+  const [showRegister, setShowRegister] = useState(false);
+  const [isClient, setIsClient] = useState(false);
+  const fileInputRef = useRef(null);
 
-  // MOVE ALL FUNCTIONS INSIDE THE COMPONENT
+  // Fix hydration issues by ensuring client-side only operations
+  useEffect(() => {
+    setIsClient(true);
+  }, []);
 
-  const handleError = (error) => {
-    setError(error.message || 'An error occurred');
-    setTimeout(() => setError(''), 5000);
+  // Safe localStorage operations
+  const getStorageItem = (key) => {
+    if (typeof window !== 'undefined' && isClient) {
+      try {
+        return localStorage.getItem(key);
+      } catch (error) {
+        console.warn('localStorage not available:', error);
+        return null;
+      }
+    }
+    return null;
+  };
+
+  const setStorageItem = (key, value) => {
+    if (typeof window !== 'undefined' && isClient) {
+      try {
+        localStorage.setItem(key, value);
+      } catch (error) {
+        console.warn('localStorage not available:', error);
+      }
+    }
+  };
+
+  const removeStorageItem = (key) => {
+    if (typeof window !== 'undefined' && isClient) {
+      try {
+        localStorage.removeItem(key);
+      } catch (error) {
+        console.warn('localStorage not available:', error);
+      }
+    }
+  };
+
+  // API call helper function with better error handling
+  const apiCall = async (endpoint, options = {}) => {
+    try {
+      const authToken = getStorageItem('authToken');
+      const response = await fetch(`${API_BASE}${endpoint}`, {
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': authToken ? `Bearer ${authToken}` : '',
+          ...options.headers,
+        },
+        ...options,
+      });
+
+      if (response.status === 401) {
+        handleLogout();
+        throw new Error('Session expired. Please log in again.');
+      }
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({ message: 'Request failed' }));
+        throw new Error(errorData.message || 'Request failed');
+      }
+
+      return await response.json();
+    } catch (error) {
+      console.error('API call failed:', error);
+      throw error;
+    }
+  };
+
+  // Initialize app data - only run on client
+  useEffect(() => {
+    if (!isClient) return;
+
+    const initializeApp = () => {
+      const authToken = getStorageItem('authToken');
+      const userData = getStorageItem('userData');
+
+      if (authToken && userData) {
+        try {
+          const userObj = JSON.parse(userData);
+          setToken(authToken);
+          setUser(userObj);
+          setIsLoggedIn(true);
+          setCurrentView('feed');
+          loadPosts();
+          loadChats();
+        } catch (error) {
+          console.error('Invalid stored user data:', error);
+          removeStorageItem('authToken');
+          removeStorageItem('userData');
+        }
+      }
+
+      // Always load mock data for demo purposes
+      loadMockData();
+    };
+
+    initializeApp();
+  }, [isClient]);
+
+  const loadMockData = () => {
+    const mockPosts = [
+      {
+        _id: '1',
+        userId: { username: 'Aurora Dreams', verified: true },
+        content: 'Embracing transparency in our digital connections. This platform truly feels different! 🌟',
+        likes: ['user1', 'user2', 'user3'],
+        comments: [
+          { user: 'Digital Phoenix', content: 'Absolutely love this approach!' }
+        ],
+        createdAt: new Date(Date.now() - 2 * 60 * 60 * 1000)
+      },
+      {
+        _id: '2', 
+        userId: { username: 'Digital Phoenix', verified: false },
+        content: 'Finally found a platform where genuine conversation thrives! The sophisticated design here creates the perfect atmosphere for authentic dialogue. 💫',
+        likes: ['user1', 'user2'],
+        comments: [],
+        createdAt: new Date(Date.now() - 4 * 60 * 60 * 1000)
+      },
+      {
+        _id: '3',
+        userId: { username: 'Cosmic Wanderer', verified: true },
+        content: 'The anti-stalker protection here is revolutionary. Finally, a safe space for real connections! 🛡️',
+        likes: ['user1', 'user2', 'user3', 'user4'],
+        comments: [
+          { user: 'Aurora Dreams', content: 'Privacy is everything!' }
+        ],
+        createdAt: new Date(Date.now() - 6 * 60 * 60 * 1000)
+      }
+    ];
+    setPosts(mockPosts);
+
+    const mockChats = [
+      {
+        _id: '1',
+        participants: [{ username: 'Aurora Dreams' }],
+        lastMessage: { content: 'Hey! Love the transparency here!' },
+        isOnline: true
+      },
+      {
+        _id: '2',
+        participants: [{ username: 'Digital Phoenix' }],
+        lastMessage: { content: 'Thanks for the authenticity tip' },
+        isOnline: true
+      },
+      {
+        _id: '3',
+        participants: [{ username: 'Cosmic Wanderer' }],
+        lastMessage: { content: 'The privacy features are amazing!' },
+        isOnline: false
+      }
+    ];
+    setChats(mockChats);
   };
 
   const loadPosts = async () => {
     try {
-      setLoading(true);
       const response = await apiCall('/posts');
-      setPosts(response.posts || response); // Handle different response formats
+      const postsData = Array.isArray(response) ? response : response.posts || [];
+      if (postsData.length > 0) {
+        setPosts(postsData);
+      }
     } catch (error) {
-      setError('Failed to load posts. Please try again.');
       console.error('Load posts error:', error);
-    } finally {
-      setLoading(false);
+      // Keep mock data on API failure
     }
   };
 
   const loadChats = async () => {
     try {
-      const response = await apiCall('/chats');
-      setChats(response);
+      const response = await apiCall('/conversations');
+      if (response && response.length > 0) {
+        setChats(response);
+      }
     } catch (error) {
-      handleError(error);
+      console.error('Load chats error:', error);
+      // Keep mock data on API failure
     }
+  };
+
+  const handleLogin = async () => {
+    if (!loginForm.email || !loginForm.password) {
+      setError('Please fill in all fields');
+      return;
+    }
+
+    setLoading(true);
+    setError('');
+
+    try {
+      const response = await fetch(`${API_BASE}/auth/login`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(loginForm),
+      });
+
+      const data = await response.json();
+
+      if (response.ok) {
+        setToken(data.token);
+        setUser(data.user);
+        setStorageItem('authToken', data.token);
+        setStorageItem('userData', JSON.stringify(data.user));
+        setIsLoggedIn(true);
+        setCurrentView('feed');
+        setLoginForm({ email: '', password: '' });
+        await loadPosts();
+        await loadChats();
+      } else {
+        setError(data.message || 'Login failed');
+      }
+    } catch (error) {
+      console.error('Login error:', error);
+      // Demo login for development
+      if (loginForm.email === 'demo@sickoscoop.com' && loginForm.password === 'demo') {
+        const demoUser = { username: 'Demo User', email: 'demo@sickoscoop.com', verified: true };
+        setUser(demoUser);
+        setToken('demo-token');
+        setStorageItem('authToken', 'demo-token');
+        setStorageItem('userData', JSON.stringify(demoUser));
+        setIsLoggedIn(true);
+        setCurrentView('feed');
+        setLoginForm({ email: '', password: '' });
+      } else {
+        setError('Network error. Try demo@sickoscoop.com / demo for testing');
+      }
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleRegister = async () => {
+    if (!registerForm.username || !registerForm.email || !registerForm.password) {
+      setError('Please fill in all fields');
+      return;
+    }
+
+    setLoading(true);
+    setError('');
+
+    try {
+      const response = await fetch(`${API_BASE}/auth/register`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(registerForm),
+      });
+
+      const data = await response.json();
+
+      if (response.ok) {
+        setToken(data.token);
+        setUser(data.user);
+        setStorageItem('authToken', data.token);
+        setStorageItem('userData', JSON.stringify(data.user));
+        setIsLoggedIn(true);
+        setCurrentView('feed');
+        setShowRegister(false);
+        setRegisterForm({ username: '', email: '', password: '' });
+        await loadPosts();
+        await loadChats();
+      } else {
+        setError(data.message || 'Registration failed');
+      }
+    } catch (error) {
+      console.error('Registration error:', error);
+      setError('Network error. Please try again or use demo login');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleLogout = () => {
+    removeStorageItem('authToken');
+    removeStorageItem('userData');
+    setToken(null);
+    setUser(null);
+    setIsLoggedIn(false);
+    setCurrentView('landing');
+    loadMockData(); // Reload mock data for demo
   };
 
   const handlePost = async () => {
     if (!newPost.trim()) return;
-
+    
     setLoading(true);
     try {
       const response = await apiCall('/posts', {
@@ -80,764 +315,630 @@ const SickoScoopApp = () => {
       setPosts([response, ...posts]);
       setNewPost('');
     } catch (error) {
-      handleError(error);
+      console.error('Post error:', error);
+      // Mock post creation for demo
+      const newPostData = {
+        _id: Date.now().toString(),
+        userId: { username: user?.username || 'You', verified: true },
+        content: newPost,
+        likes: [],
+        comments: [],
+        createdAt: new Date()
+      };
+
+      setPosts([newPostData, ...posts]);
+      setNewPost('');
     } finally {
       setLoading(false);
     }
   };
 
-  const likePost = async (postId) => {
+  const handleLike = async (postId) => {
+    const userId = user?.id || 'demo-user';
+    
     try {
-      const response = await apiCall(`/posts/${postId}/like`, {
+      await apiCall(`/posts/${postId}/like`, {
         method: 'POST',
       });
-
-      setPosts(posts.map(post =>
-        post._id === postId
-          ? {
-            ...post, likes: response.liked
-              ? [...post.likes, currentUser.id]
-              : post.likes.filter(id => id !== currentUser.id)
-          }
-          : post
-      ));
     } catch (error) {
-      handleError(error);
+      console.error('Like error:', error);
     }
+
+    // Update UI optimistically
+    setPosts(posts.map(post => {
+      if (post._id === postId) {
+        const hasLiked = post.likes.includes(userId);
+        return {
+          ...post,
+          likes: hasLiked 
+            ? post.likes.filter(id => id !== userId)
+            : [...post.likes, userId]
+        };
+      }
+      return post;
+    }));
   };
 
-  const sendMessage = async () => {
-    if (!chatMessage.trim() || !selectedChat || !socket) return;
+  const handleFileUpload = async (files) => {
+    console.log('Files selected:', files);
+    // TODO: Implement file upload
+  };
 
-    const messageData = {
-      chatId: selectedChat._id,
-      content: chatMessage.trim(),
-      senderId: currentUser.id
-    };
-
-    socket.emit('send-message', messageData);
+  const handleSendMessage = () => {
+    if (!chatMessage.trim() || !selectedChat) return;
+    
+    // Mock message sending
+    console.log('Sending message:', chatMessage, 'to:', selectedChat.participants[0]?.username);
     setChatMessage('');
   };
 
-  const formatTimeAgo = (date) => {
-    const now = new Date();
-    const postDate = new Date(date);
-    const diffInMinutes = Math.floor((now - postDate) / (1000 * 60));
-
-    if (diffInMinutes < 1) return 'now';
-    if (diffInMinutes < 60) return `${diffInMinutes}m ago`;
-    if (diffInMinutes < 1440) return `${Math.floor(diffInMinutes / 60)}h ago`;
-    return `${Math.floor(diffInMinutes / 1440)}d ago`;
-  };
-
-  // Initialize socket connection
-  useEffect(() => {
-    if (currentUser && !socket) {
-      // Dynamic import for socket.io-client
-      import('socket.io-client').then((io) => {
-        const newSocket = io.default(SOCKET_URL);
-        setSocket(newSocket);
-
-        newSocket.on('new-message', (message) => {
-          if (selectedChat && message.chatId === selectedChat._id) {
-            setSelectedChat(prev => ({
-              ...prev,
-              messages: [...prev.messages, message]
-            }));
-          }
-          loadChats(); // Refresh chat list
-        });
-
-        return () => newSocket.close();
-      });
-    }
-  }, [currentUser, selectedChat, socket, SOCKET_URL]);
-
-  // Auto-scroll chat messages
-  useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-  }, [selectedChat?.messages]);
-
-  // Check for existing auth token on app load
-  useEffect(() => {
-    const token = localStorage.getItem('authToken');
-    const userData = localStorage.getItem('userData');
-
-    if (token && userData && !currentUser) {
-      try {
-        const user = JSON.parse(userData);
-        // Note: You'll need to implement setCurrentUser in your useAuth hook
-        // or handle this differently based on your auth implementation
-        setCurrentView('feed');
-        loadPosts();
-        loadChats();
-      } catch (error) {
-        localStorage.removeItem('authToken');
-        localStorage.removeItem('userData');
-      }
-    }
-  }, [currentUser]);
-
-  const handleLogin = async () => {
-    setLoading(true);
-    clearError();
-    setError('');
-
-    const result = await login(loginForm);
-
-    if (result.success) {
-      setCurrentView('feed');
-      setSuccess('Successfully logged in!');
-      setLoginForm({ email: '', password: '' }); // Clear form
-      await loadPosts();
-      await loadChats();
-    } else {
-      setError(result.error || 'Login failed');
-    }
-
-    setLoading(false);
-  };
-
-  const handleSignup = async () => {
-    setLoading(true);
-    clearError();
-    setError('');
-
-    // Validate required fields
-    if (!signupForm.name.trim()) {
-      setError('Please enter your name.');
-      setLoading(false);
-      return;
-    }
-
-    if (!signupForm.email.trim()) {
-      setError('Please enter your email.');
-      setLoading(false);
-      return;
-    }
-
-    if (!signupForm.password) {
-      setError('Please enter a password.');
-      setLoading(false);
-      return;
-    }
-
-    if (signupForm.password.length < 6) {
-      setError('Password must be at least 6 characters long.');
-      setLoading(false);
-      return;
-    }
-
-    // Check if passwords match
-    if (signupForm.password !== signupForm.confirmPassword) {
-      setError('Passwords do not match.');
-      setLoading(false);
-      return;
-    }
-
-    const result = await register({
-      name: signupForm.name,
-      email: signupForm.email,
-      password: signupForm.password,
-    });
-
-    if (result.success) {
-      setCurrentView('feed');
-      setSuccess('Account created successfully!');
-      setSignupForm({ name: '', email: '', password: '', confirmPassword: '' });
-      await loadPosts();
-      await loadChats();
-    } else {
-      setError(result.error || 'Registration failed');
-    }
-
-    setLoading(false);
-  };
-
-  // FIXED: Remove nested function definition
-  const handleLogout = () => {
-    authLogout(); // Use the real logout function
-    setCurrentView('landing');
-    setPosts([]);
-    setChats([]);
-    if (socket) {
-      socket.disconnect();
-    }
-    setSocket(null);
-    setSuccess('Logged out successfully!');
-  };
-
-  const ErrorAlert = () => error && (
-    <div className="fixed top-4 right-4 bg-red-500/90 text-white px-4 py-3 rounded-lg shadow-lg z-50 flex items-center space-x-2">
-      <AlertCircle className="w-5 h-5" />
-      <span>{error}</span>
-    </div>
-  );
-
-  const LoadingSpinner = () => (
-    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-yellow-400"></div>
-  );
-
-  const renderLandingPage = () => (
-    <div className="min-h-screen bg-gradient-to-br from-purple-900 via-indigo-900 to-blue-900 relative overflow-hidden">
-      <ErrorAlert />
-
-      {/* Ornate Background Pattern */}
-      <div className="absolute inset-0 opacity-20">
-        <div className="absolute top-0 left-0 w-full h-full bg-gradient-to-br from-yellow-400 via-transparent to-purple-600"></div>
-        <div className="absolute top-20 left-20 w-32 h-32 border-2 border-yellow-400 rounded-full opacity-30"></div>
-        <div className="absolute bottom-20 right-20 w-24 h-24 border border-yellow-400 rotate-45 opacity-40"></div>
-        <div className="absolute top-1/2 left-1/3 w-16 h-16 bg-yellow-400 rounded-full opacity-20"></div>
+  const LandingPage = () => (
+    <div className="min-h-screen relative overflow-hidden border-4 border-orange-600/80">
+      {/* Animated Background */}
+      <div className="absolute inset-0 bg-gradient-to-br from-gray-900 via-slate-900 to-zinc-900">
+        <div className="absolute inset-0 opacity-10">
+          <div className="absolute top-10 left-10 w-32 h-32 bg-gradient-to-r from-purple-800 to-indigo-700 rounded-full blur-xl animate-pulse"></div>
+          <div className="absolute top-40 right-20 w-24 h-24 bg-gradient-to-r from-slate-700 to-gray-600 rounded-full blur-lg animate-pulse delay-1000"></div>
+          <div className="absolute bottom-20 left-1/3 w-40 h-40 bg-gradient-to-r from-zinc-800 to-slate-700 rounded-full blur-2xl animate-pulse delay-2000"></div>
+        </div>
       </div>
 
-      <div className="relative z-10 flex flex-col items-center justify-center min-h-screen px-4">
+      <div className="relative z-10 flex flex-col items-center justify-center min-h-screen p-8 text-center">
         {/* Logo */}
-        <div className="mb-8 text-center">
-          <div className="w-24 h-24 mx-auto mb-4 bg-gradient-to-br from-yellow-400 to-yellow-600 rounded-full flex items-center justify-center border-4 border-yellow-300 shadow-2xl">
-            <span className="text-3xl font-bold text-purple-900">SS</span>
-          </div>
-          <h1 className="text-6xl font-bold bg-gradient-to-r from-yellow-400 via-yellow-300 to-yellow-500 bg-clip-text text-transparent mb-2">
+        <div className="mb-8 relative">
+          <div className="text-6xl md:text-8xl font-bold bg-gradient-to-r from-slate-300 via-purple-400 to-indigo-400 bg-clip-text text-transparent">
             SickoScoop
-          </h1>
-          <p className="text-xl text-yellow-200 italic">Where Authenticity Reigns Supreme</p>
-        </div>
-
-        {/* Main Message */}
-        <div className="bg-black/40 backdrop-blur-md border border-yellow-400/30 rounded-2xl p-8 mb-8 max-w-2xl mx-auto text-center shadow-2xl">
-          <h2 className="text-4xl font-bold text-yellow-300 mb-4 tracking-wide">
-            STOP STALKERS ON SICKOSCOOP
-          </h2>
-          <p className="text-lg text-white/90 leading-relaxed mb-6">
-            Join a revolutionary social platform built on transparency, genuine connections, and user safety.
-            Our advanced protection systems ensure authentic communication while keeping predators at bay.
-          </p>
-          <div className="flex items-center justify-center space-x-4 text-yellow-300">
-            <Shield className="w-6 h-6" />
-            <span className="text-sm">Verified Identities</span>
-            <Lock className="w-6 h-6" />
-            <span className="text-sm">Secure Conversations</span>
-            <Heart className="w-6 h-6" />
-            <span className="text-sm">Genuine Connections</span>
           </div>
         </div>
 
-        {/* Auth Buttons */}
-        <div className="flex space-x-4">
-          <button
-            onClick={() => setCurrentView('login')}
-            className="px-8 py-3 bg-gradient-to-r from-yellow-500 to-yellow-600 text-purple-900 font-bold rounded-xl hover:from-yellow-400 hover:to-yellow-500 transition-all duration-300 shadow-lg transform hover:scale-105"
-          >
-            Sign In
-          </button>
-          <button
-            onClick={() => setCurrentView('signup')}
-            className="px-8 py-3 bg-transparent border-2 border-yellow-400 text-yellow-300 font-bold rounded-xl hover:bg-yellow-400 hover:text-purple-900 transition-all duration-300 shadow-lg transform hover:scale-105"
-          >
-            Join Now
-          </button>
-        </div>
-      </div>
-    </div>
-  );
+        {/* Main Title */}
+        <h1 className="text-4xl md:text-6xl font-bold text-white mb-10 drop-shadow-2xl leading-none">
+          <span className="whitespace-nowrap">STOP STALKERS</span>
+          <br />
+          <span className="text-2xl md:text-4xl block my-2">ON</span>
+          <span className="bg-gradient-to-r from-orange-300 via-red-400 via-blue-400 to-indigo-400 bg-clip-text text-transparent block animate-pulse relative">
+            <span className="absolute inset-0 bg-gradient-to-r from-orange-200 via-red-300 via-cyan-300 to-blue-300 bg-clip-text text-transparent blur-sm opacity-80"></span>
+            <span className="absolute inset-0 bg-gradient-to-r from-amber-300 via-rose-300 via-sky-300 to-violet-300 bg-clip-text text-transparent blur-xs opacity-40"></span>
+            SICKOSCOOP
+          </span>
+        </h1>
 
-  const renderAuth = (type) => (
-    <div className="min-h-screen bg-gradient-to-br from-purple-900 via-indigo-900 to-blue-900 flex items-center justify-center px-4">
-      <ErrorAlert />
-
-      <div className="bg-black/40 backdrop-blur-md border border-yellow-400/30 rounded-2xl p-8 max-w-md w-full shadow-2xl">
-        <div className="text-center mb-6">
-          <div className="w-16 h-16 mx-auto mb-4 bg-gradient-to-br from-yellow-400 to-yellow-600 rounded-full flex items-center justify-center">
-            <span className="text-xl font-bold text-purple-900">SS</span>
-          </div>
-          <h2 className="text-2xl font-bold text-yellow-300 mb-2">
-            {type === 'login' ? 'Welcome Back' : 'Join SickoScoop'}
-          </h2>
-          <p className="text-white/70 text-sm">
-            {type === 'login' ? 'Continue your authentic journey' : 'Start building genuine connections'}
+        {/* Subtitle */}
+        <div className="inline-block border-2 border-amber-500/80 rounded-lg px-6 py-3 mb-12">
+          <p className="text-xl md:text-2xl text-slate-300 leading-relaxed">
+            revelation & transparency
           </p>
         </div>
 
-        <div>
-          {/* Name Field - Only for Signup */}
-          {type === 'signup' && (
-            <div className="mb-4">
+        {/* Demo Login Info */}
+        <div className="mb-4 p-3 bg-blue-500/20 border border-blue-500/50 rounded-lg text-blue-300 max-w-md">
+          Demo Login: demo@sickoscoop.com / demo
+        </div>
+
+        {/* Error Display */}
+        {error && (
+          <div className="mb-4 p-3 bg-red-500/20 border border-red-500/50 rounded-lg text-red-300 max-w-md">
+            {error}
+          </div>
+        )}
+
+        {/* Auth Forms */}
+        <div className="mb-8 w-full max-w-md">
+          {!showRegister ? (
+            <div className="space-y-4">
               <input
-                type="text"
-                placeholder="Full Name"
-                value={signupForm.name}
-                onChange={(e) => setSignupForm({ ...signupForm, name: e.target.value })}
-                className="w-full px-4 py-3 bg-white/10 border border-yellow-400/30 rounded-xl text-white placeholder-white/50 focus:outline-none focus:border-yellow-400 focus:bg-white/20 transition-all"
-                disabled={loading}
+                type="email"
+                placeholder="Email"
+                value={loginForm.email}
+                onChange={(e) => setLoginForm({...loginForm, email: e.target.value})}
+                onKeyPress={(e) => e.key === 'Enter' && handleLogin()}
+                className="w-full p-3 bg-black/40 border border-slate-600/50 rounded-lg text-white placeholder-slate-300 focus:outline-none focus:ring-2 focus:ring-slate-400"
               />
-            </div>
-          )}
-
-          {/* Email Field */}
-          <div className="mb-4">
-            <input
-              type="email"
-              placeholder="Email Address"
-              value={type === 'login' ? loginForm.email : signupForm.email}
-              onChange={(e) => {
-                if (type === 'login') {
-                  setLoginForm({ ...loginForm, email: e.target.value });
-                } else {
-                  setSignupForm({ ...signupForm, email: e.target.value });
-                }
-              }}
-              className="w-full px-4 py-3 bg-white/10 border border-yellow-400/30 rounded-xl text-white placeholder-white/50 focus:outline-none focus:border-yellow-400 focus:bg-white/20 transition-all"
-              disabled={loading}
-            />
-          </div>
-
-          {/* Password Field */}
-          <div className="mb-4 relative">
-            <input
-              type={showPassword ? "text" : "password"}
-              placeholder="Password"
-              value={type === 'login' ? loginForm.password : signupForm.password}
-              onChange={(e) => {
-                if (type === 'login') {
-                  setLoginForm({ ...loginForm, password: e.target.value });
-                } else {
-                  setSignupForm({ ...signupForm, password: e.target.value });
-                }
-              }}
-              className="w-full px-4 py-3 bg-white/10 border border-yellow-400/30 rounded-xl text-white placeholder-white/50 focus:outline-none focus:border-yellow-400 focus:bg-white/20 transition-all pr-12"
-              disabled={loading}
-            />
-            <button
-              onClick={() => setShowPassword(!showPassword)}
-              className="absolute right-3 top-1/2 transform -translate-y-1/2 text-white/50 hover:text-yellow-400 transition-colors"
-              disabled={loading}
-            >
-              {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
-            </button>
-          </div>
-
-          {/* Confirm Password Field - Only for Signup */}
-          {type === 'signup' && (
-            <div className="mb-6 relative">
               <input
-                type={showConfirmPassword ? "text" : "password"}
-                placeholder="Confirm Password"
-                value={signupForm.confirmPassword}
-                onChange={(e) => setSignupForm({ ...signupForm, confirmPassword: e.target.value })}
-                className="w-full px-4 py-3 bg-white/10 border border-yellow-400/30 rounded-xl text-white placeholder-white/50 focus:outline-none focus:border-yellow-400 focus:bg-white/20 transition-all pr-12"
-                disabled={loading}
+                type="password"
+                placeholder="Password"
+                value={loginForm.password}
+                onChange={(e) => setLoginForm({...loginForm, password: e.target.value})}
+                onKeyPress={(e) => e.key === 'Enter' && handleLogin()}
+                className="w-full p-3 bg-black/40 border border-slate-600/50 rounded-lg text-white placeholder-slate-300 focus:outline-none focus:ring-2 focus:ring-slate-400"
               />
               <button
-                onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-                className="absolute right-3 top-1/2 transform -translate-y-1/2 text-white/50 hover:text-yellow-400 transition-colors"
+                onClick={handleLogin}
                 disabled={loading}
+                className="w-full px-12 py-4 bg-gradient-to-r from-gray-900 via-slate-800 to-black text-white text-xl font-semibold rounded-lg hover:scale-105 transform transition-all duration-300 shadow-2xl hover:shadow-amber-500/50 border-2 border-amber-500/80 hover:border-amber-400 hover:from-gray-800 hover:via-slate-700 hover:to-gray-900 disabled:opacity-50"
               >
-                {showConfirmPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
+                {loading ? 'Entering...' : 'Enter Sicko'}
+              </button>
+            </div>
+          ) : (
+            <div className="space-y-4">
+              <input
+                type="text"
+                placeholder="Username"
+                value={registerForm.username}
+                onChange={(e) => setRegisterForm({...registerForm, username: e.target.value})}
+                onKeyPress={(e) => e.key === 'Enter' && handleRegister()}
+                className="w-full p-3 bg-black/40 border border-slate-600/50 rounded-lg text-white placeholder-slate-300 focus:outline-none focus:ring-2 focus:ring-slate-400"
+              />
+              <input
+                type="email"
+                placeholder="Email"
+                value={registerForm.email}
+                onChange={(e) => setRegisterForm({...registerForm, email: e.target.value})}
+                onKeyPress={(e) => e.key === 'Enter' && handleRegister()}
+                className="w-full p-3 bg-black/40 border border-slate-600/50 rounded-lg text-white placeholder-slate-300 focus:outline-none focus:ring-2 focus:ring-slate-400"
+              />
+              <input
+                type="password"
+                placeholder="Password"
+                value={registerForm.password}
+                onChange={(e) => setRegisterForm({...registerForm, password: e.target.value})}
+                onKeyPress={(e) => e.key === 'Enter' && handleRegister()}
+                className="w-full p-3 bg-black/40 border border-slate-600/50 rounded-lg text-white placeholder-slate-300 focus:outline-none focus:ring-2 focus:ring-slate-400"
+              />
+              <button
+                onClick={handleRegister}
+                disabled={loading}
+                className="w-full px-12 py-4 bg-gradient-to-r from-gray-900 via-slate-800 to-black text-white text-xl font-semibold rounded-lg hover:scale-105 transform transition-all duration-300 shadow-2xl hover:shadow-amber-500/50 border-2 border-amber-500/80 hover:border-amber-400 hover:from-gray-800 hover:via-slate-700 hover:to-gray-900 disabled:opacity-50"
+              >
+                {loading ? 'Creating Account...' : 'Join Sicko'}
               </button>
             </div>
           )}
-
-          {/* For login, add margin bottom to password field */}
-          {type === 'login' && <div className="mb-2"></div>}
-
+          
           <button
-            onClick={type === 'login' ? handleLogin : handleSignup}
-            disabled={loading}
-            className="w-full px-4 py-3 bg-gradient-to-r from-yellow-500 to-yellow-600 text-purple-900 font-bold rounded-xl hover:from-yellow-400 hover:to-yellow-500 transition-all duration-300 shadow-lg mb-4 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center"
+            onClick={() => setShowRegister(!showRegister)}
+            className="mt-4 text-slate-300 hover:text-white transition-colors"
           >
-            {loading ? <LoadingSpinner /> : (type === 'login' ? 'Sign In' : 'Create Account')}
+            {showRegister ? 'Already have an account? Sign in' : 'Need an account? Register'}
           </button>
         </div>
 
-        <div className="text-center">
-          <button
-            onClick={() => setCurrentView(type === 'login' ? 'signup' : 'login')}
-            className="text-yellow-400 hover:text-yellow-300 text-sm transition-colors"
-            disabled={loading}
-          >
-            {type === 'login' ? "Don't have an account? Sign up" : "Already have an account? Sign in"}
-          </button>
+        {/* Features */}
+        <div className="mt-16 grid grid-cols-1 md:grid-cols-3 gap-8 max-w-4xl">
+          {[
+            { 
+              icon: (
+                <div className="relative w-12 h-12">
+                  <div className="absolute inset-0 bg-gradient-to-br from-purple-300 via-indigo-400 to-violet-500 rounded-full opacity-80 blur-sm"></div>
+                  <div className="absolute inset-1 bg-gradient-to-tr from-orange-300 via-orange-400 to-blue-500 rounded-full opacity-90 animate-pulse"></div>
+                  <div className="absolute inset-2 bg-gradient-to-bl from-blue-300 via-purple-400 to-indigo-500 rounded-full opacity-70"></div>
+                  <div className="absolute inset-3 bg-gradient-to-tl from-orange-300 via-purple-300 to-blue-400 rounded-full animate-pulse"></div>
+                </div>
+              ), 
+              title: 'Anti-Stalker Protection', 
+              desc: 'Advanced privacy controls' 
+            },
+            { 
+              icon: (
+                <div className="relative w-12 h-12">
+                  <div className="absolute inset-0 bg-gradient-to-br from-purple-300 via-indigo-400 to-violet-500 transform rotate-45 opacity-80 blur-sm"></div>
+                  <div className="absolute inset-1 bg-gradient-to-tr from-orange-300 via-orange-400 to-blue-500 transform rotate-45 opacity-90 animate-pulse"></div>
+                  <div className="absolute inset-2 bg-gradient-to-bl from-blue-300 via-purple-400 to-indigo-500 transform rotate-45 opacity-70"></div>
+                  <div className="absolute inset-3 bg-gradient-to-tl from-orange-300 via-purple-300 to-blue-400 transform rotate-45 animate-pulse"></div>
+                </div>
+              ), 
+              title: 'Decency', 
+              desc: 'No anonymous trolls' 
+            },
+            { 
+              icon: (
+                <div className="relative w-12 h-12">
+                  <div className="absolute inset-0 bg-gradient-to-br from-violet-400 via-purple-500 to-indigo-600 opacity-80 blur-sm" style={{clipPath: 'polygon(50% 0%, 0% 100%, 100% 100%)'}}></div>
+                  <div className="absolute inset-1 bg-gradient-to-tr from-orange-400 via-blue-700 to-amber-500 opacity-90 animate-pulse" style={{clipPath: 'polygon(50% 0%, 0% 100%, 100% 100%)'}}></div>
+                  <div className="absolute inset-2 bg-gradient-to-bl from-teal-400 via-cyan-500 to-blue-600 opacity-70" style={{clipPath: 'polygon(50% 0%, 0% 100%, 100% 100%)'}}></div>
+                  <div className="absolute inset-3 bg-gradient-to-tl from-blue-900 via-indigo-800 to-slate-800 animate-pulse" style={{clipPath: 'polygon(50% 0%, 0% 100%, 100% 100%)'}}></div>
+                </div>
+              ), 
+              title: 'Genuine Community', 
+              desc: 'Keeping everyone safe' 
+            }
+          ].map((feature, idx) => (
+            <div key={idx} className="bg-black/20 backdrop-blur-md rounded-2xl p-6 border border-slate-600/30 hover:bg-black/30 transition-all duration-300">
+              <div className="inline-block border-2 border-amber-500/80 rounded-lg p-3 mb-4 bg-black/30">
+                {feature.icon}
+              </div>
+              <h3 className="text-xl font-semibold text-white mb-2">{feature.title}</h3>
+              <p className="text-slate-300">{feature.desc}</p>
+            </div>
+          ))}
         </div>
-
-        <button
-          onClick={() => setCurrentView('landing')}
-          className="mt-4 w-full text-white/50 hover:text-white text-sm transition-colors"
-          disabled={loading}
-        >
-          ← Back to Home
-        </button>
       </div>
     </div>
   );
 
-  const renderNavigation = () => (
-    <nav className="bg-gradient-to-r from-purple-900 via-indigo-900 to-blue-900 border-b border-yellow-400/30 px-4 py-3">
-      <div className="max-w-6xl mx-auto flex items-center justify-between">
+  const Header = () => (
+    <header className="bg-gradient-to-r from-gray-900 via-slate-900 to-zinc-900 shadow-2xl border-b border-slate-700/50">
+      <div className="container mx-auto px-4 py-4 flex items-center justify-between">
         <div className="flex items-center space-x-4">
-          <div className="w-10 h-10 bg-gradient-to-br from-yellow-400 to-yellow-600 rounded-full flex items-center justify-center">
-            <span className="text-sm font-bold text-purple-900">SS</span>
+          <div className="text-2xl md:text-3xl font-bold bg-gradient-to-r from-slate-300 to-purple-400 bg-clip-text text-transparent">
+            SickoScoop
           </div>
-          <span className="text-xl font-bold text-yellow-300">SickoScoop</span>
-        </div>
-
-        <div className="flex items-center space-x-6">
-          <button
-            onClick={() => setCurrentView('feed')}
-            className={`flex items-center space-x-2 px-3 py-2 rounded-lg transition-colors ${currentView === 'feed' ? 'bg-yellow-400/20 text-yellow-300' : 'text-white/70 hover:text-yellow-300'
-              }`}
-          >
-            <Home className="w-5 h-5" />
-            <span>Feed</span>
-          </button>
-
-          <button
-            onClick={() => setCurrentView('profile')}
-            className={`flex items-center space-x-2 px-3 py-2 rounded-lg transition-colors ${currentView === 'profile' ? 'bg-yellow-400/20 text-yellow-300' : 'text-white/70 hover:text-yellow-300'
-              }`}
-          >
-            <User className="w-5 h-5" />
-            <span>Profile</span>
-          </button>
-
-          <button
-            onClick={() => {
-              setCurrentView('chat');
-              loadChats();
-            }}
-            className={`flex items-center space-x-2 px-3 py-2 rounded-lg transition-colors ${currentView === 'chat' ? 'bg-yellow-400/20 text-yellow-300' : 'text-white/70 hover:text-yellow-300'
-              }`}
-          >
-            <MessageSquare className="w-5 h-5" />
-            <span>Chat</span>
-          </button>
-
-          <div className="flex items-center space-x-3">
-            <span className="text-white/70 text-sm">
-              Welcome, {currentUser?.name || 'User'}
-            </span>
+          <div className="hidden md:flex space-x-6">
             <button
-              onClick={handleLogout}
-              className="text-white/70 hover:text-red-400 transition-colors"
+              onClick={() => setCurrentView('feed')}
+              className={`px-4 py-2 rounded-lg border-2 transition-all ${currentView === 'feed' ? 'bg-slate-700 text-white border-amber-500' : 'text-slate-300 hover:text-white border-amber-600/50 hover:border-amber-500'}`}
             >
-              Logout
+              Feed
+            </button>
+            <button
+              onClick={() => setCurrentView('profile')}
+              className={`px-4 py-2 rounded-lg border-2 transition-all ${currentView === 'profile' ? 'bg-slate-700 text-white border-amber-500' : 'text-slate-300 hover:text-white border-amber-600/50 hover:border-amber-500'}`}
+            >
+              Profile
+            </button>
+            <button
+              onClick={() => setCurrentView('chat')}
+              className={`px-4 py-2 rounded-lg border-2 transition-all ${currentView === 'chat' ? 'bg-slate-700 text-white border-amber-500' : 'text-slate-300 hover:text-white border-amber-600/50 hover:border-amber-500'}`}
+            >
+              Chat
+            </button>
+          </div>
+        </div>
+        
+        <div className="flex items-center space-x-4">
+          <div className="hidden md:block relative">
+            <Search className="absolute left-3 top-3 h-4 w-4 text-slate-500" />
+            <input
+              type="text"
+              placeholder="Search the scoop..."
+              className="pl-10 pr-4 py-2 bg-black/40 border border-slate-600/60 rounded-full text-white placeholder-slate-300 focus:outline-none focus:ring-2 focus:ring-slate-400"
+            />
+          </div>
+          <button className="p-2 text-slate-300 hover:text-white transition-colors">
+            <Settings className="h-6 w-6" />
+          </button>
+          <button
+            onClick={handleLogout}
+            className="px-4 py-2 bg-red-600/80 hover:bg-red-600 text-white rounded-lg transition-colors"
+          >
+            Logout
+          </button>
+          <div className="w-10 h-10 bg-gradient-to-r from-slate-600 to-zinc-600 rounded-full flex items-center justify-center text-white font-semibold">
+            {user?.username?.slice(0, 2).toUpperCase() || 'YU'}
+          </div>
+        </div>
+      </div>
+    </header>
+  );
+
+  const PostCreator = () => (
+    <div className="bg-gradient-to-r from-slate-900/60 to-zinc-900/60 backdrop-blur-md rounded-2xl p-6 border border-slate-600/40 mb-6">
+      <div className="flex space-x-4">
+        <div className="w-12 h-12 bg-gradient-to-r from-slate-600 to-zinc-600 rounded-full flex items-center justify-center text-white font-semibold">
+          {user?.username?.slice(0, 2).toUpperCase() || 'YU'}
+        </div>
+        <div className="flex-1">
+          <textarea
+            value={newPost}
+            onChange={(e) => setNewPost(e.target.value)}
+            placeholder="Share your authentic thoughts with transparency..."
+            className="w-full p-4 bg-black/40 border border-slate-600/50 rounded-xl text-white placeholder-slate-300 resize-none focus:outline-none focus:ring-2 focus:ring-slate-400"
+            rows="3"
+          />
+          <div className="flex flex-col md:flex-row items-start md:items-center justify-between mt-4 space-y-4 md:space-y-0">
+            <div className="flex flex-wrap gap-2">
+              <button
+                onClick={() => fileInputRef.current?.click()}
+                className="flex items-center space-x-2 px-3 py-2 bg-slate-700/60 rounded-lg text-slate-300 hover:bg-slate-700 transition-colors border-2 border-amber-600/50 hover:border-amber-500 text-sm"
+              >
+                <Image className="h-4 w-4" />
+                <span>Photo</span>
+              </button>
+              <button className="flex items-center space-x-2 px-3 py-2 bg-slate-700/60 rounded-lg text-slate-300 hover:bg-slate-700 transition-colors border-2 border-amber-600/50 hover:border-amber-500 text-sm">
+                <Video className="h-4 w-4" />
+                <span>Video</span>
+              </button>
+              <button className="flex items-center space-x-2 px-3 py-2 bg-slate-700/60 rounded-lg text-slate-300 hover:bg-slate-700 transition-colors border-2 border-amber-600/50 hover:border-amber-500 text-sm">
+                <Mic className="h-4 w-4" />
+                <span>Audio</span>
+              </button>
+              <button className="flex items-center space-x-2 px-3 py-2 bg-slate-700/60 rounded-lg text-slate-300 hover:bg-slate-700 transition-colors border-2 border-amber-600/50 hover:border-amber-500 text-sm">
+                <FileText className="h-4 w-4" />
+                <span>PDF</span>
+              </button>
+            </div>
+            <button
+              onClick={handlePost}
+              disabled={!newPost.trim() || loading}
+              className="px-6 py-2 bg-gradient-to-r from-slate-700 to-zinc-700 text-white rounded-lg hover:scale-105 transform transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed border-2 border-amber-600/70 hover:border-amber-500"
+            >
+              {loading ? 'Posting...' : 'Post Scoop'}
             </button>
           </div>
         </div>
       </div>
-    </nav>
+      <input
+        ref={fileInputRef}
+        type="file"
+        multiple
+        accept="image/*,video/*,audio/*,.pdf"
+        onChange={(e) => handleFileUpload(e.target.files)}
+        className="hidden"
+      />
+    </div>
   );
 
-  const renderFeed = () => (
-    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-purple-900 to-indigo-900">
-      <ErrorAlert />
-      {renderNavigation()}
+  const Post = ({ post }) => {
+    const timeAgo = (date) => {
+      const now = new Date();
+      const postDate = new Date(date);
+      const diffInHours = Math.floor((now - postDate) / (1000 * 60 * 60));
+      
+      if (diffInHours < 1) return 'Just now';
+      if (diffInHours < 24) return `${diffInHours}h ago`;
+      return `${Math.floor(diffInHours / 24)}d ago`;
+    };
 
-      <div className="max-w-2xl mx-auto px-4 py-6">
-        {/* Post Creation */}
-        <div className="bg-black/40 backdrop-blur-md border border-yellow-400/30 rounded-2xl p-6 mb-6 shadow-xl">
-          <div className="flex items-start space-x-4">
-            <div className="w-12 h-12 bg-gradient-to-br from-yellow-400 to-yellow-600 rounded-full flex items-center justify-center">
-              <span className="text-lg">{currentUser?.avatar || '✨'}</span>
+    return (
+      <div className="bg-gradient-to-r from-slate-900/40 to-zinc-900/40 backdrop-blur-md rounded-2xl p-6 border border-slate-600/30 mb-6 hover:border-slate-500/50 transition-all duration-300">
+        <div className="flex items-start space-x-4">
+          <div className="w-12 h-12 bg-gradient-to-r from-slate-600 to-zinc-600 rounded-full flex items-center justify-center text-white font-semibold text-sm">
+            {post.userId?.username?.slice(0, 2).toUpperCase() || 'UN'}
+          </div>
+          <div className="flex-1">
+            <div className="flex items-center space-x-2 mb-2">
+              <span className="font-semibold text-white">
+                {post.userId?.username || 'Unknown User'}
+              </span>
+              {post.userId?.verified && <span className="text-indigo-400">✓</span>}
+              <span className="text-slate-400 text-sm">
+                {timeAgo(post.createdAt)}
+              </span>
             </div>
-            <div className="flex-1">
-              <textarea
-                value={newPost}
-                onChange={(e) => setNewPost(e.target.value)}
-                placeholder="Share something authentic..."
-                className="w-full bg-transparent text-white placeholder-white/50 resize-none focus:outline-none text-lg"
-                rows="3"
-                disabled={loading}
-              />
-              <div className="flex justify-between items-center mt-4">
-                <span className="text-white/50 text-sm">✨ Transparency encouraged</span>
-                <button
-                  onClick={handlePost}
-                  disabled={!newPost.trim() || loading}
-                  className="px-6 py-2 bg-gradient-to-r from-yellow-500 to-yellow-600 text-purple-900 font-semibold rounded-lg hover:from-yellow-400 hover:to-yellow-500 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center space-x-2"
-                >
-                  {loading ? <LoadingSpinner /> : <span>Post</span>}
-                </button>
+            <p className="text-slate-200 mb-4 leading-relaxed">{post.content}</p>
+            {post.mediaFiles && post.mediaFiles.length > 0 && (
+              <div className="mb-4">
+                {post.mediaFiles.map((file, idx) => (
+                  <div key={idx} className="mb-2">
+                    {file.type === 'image' && (
+                      <img src={file.url} alt="Post media" className="w-full max-w-md rounded-xl" />
+                    )}
+                    {file.type === 'video' && (
+                      <video controls className="w-full max-w-md rounded-xl">
+                        <source src={file.url} />
+                      </video>
+                    )}
+                  </div>
+                ))}
               </div>
+            )}
+            <div className="flex items-center space-x-6 text-slate-400">
+              <button 
+                onClick={() => handleLike(post._id)}
+                className={`flex items-center space-x-2 hover:text-red-400 transition-colors ${
+                  post.likes.includes(user?.id || 'demo-user') ? 'text-red-400' : ''
+                }`}
+              >
+                <Heart className="h-5 w-5" fill={post.likes.includes(user?.id || 'demo-user') ? 'currentColor' : 'none'} />
+                <span>{post.likes?.length || 0}</span>
+              </button>
+              <button className="flex items-center space-x-2 hover:text-indigo-400 transition-colors">
+                <MessageCircle className="h-5 w-5" />
+                <span>{post.comments?.length || 0}</span>
+              </button>
+              <button className="flex items-center space-x-2 hover:text-slate-300 transition-colors">
+                <Share2 className="h-5 w-5" />
+                <span>Share</span>
+              </button>
             </div>
           </div>
         </div>
+      </div>
+    );
+  };
 
-        {/* Posts */}
-        <div className="space-y-6">
-          {posts.map(post => (
-            <div key={post._id || post.id} className="bg-black/40 backdrop-blur-md border border-yellow-400/30 rounded-2xl p-6 shadow-xl">
-              <div className="flex items-start space-x-4">
-                <div className="w-12 h-12 bg-gradient-to-br from-indigo-500 to-purple-600 rounded-full flex items-center justify-center">
-                  <span className="text-lg">{post.author?.avatar || '👤'}</span>
-                </div>
-                <div className="flex-1">
-                  <div className="flex items-center space-x-2 mb-2">
-                    <span className="font-semibold text-white">{post.author?.name || 'Anonymous'}</span>
-                    {post.author?.verified && <Shield className="w-4 h-4 text-yellow-400" />}
-                    <span className="text-white/50 text-sm">{formatTimeAgo(post.createdAt || post.timestamp)}</span>
-                  </div>
-                  <p className="text-white/90 mb-4 leading-relaxed">{post.content}</p>
-                  <div className="flex items-center space-x-6">
-                    <button
-                      onClick={() => likePost(post._id || post.id)}
-                      className={`flex items-center space-x-2 transition-colors ${post.likes?.includes(currentUser?.id)
-                          ? 'text-red-400'
-                          : 'text-white/60 hover:text-red-400'
-                        }`}
-                    >
-                      <Heart className="w-5 h-5" />
-                      <span>{Array.isArray(post.likes) ? post.likes.length : post.likes || 0}</span>
-                    </button>
-                    <button className="flex items-center space-x-2 text-white/60 hover:text-blue-400 transition-colors">
-                      <MessageSquare className="w-5 h-5" />
-                      <span>{post.comments?.length || post.comments || 0}</span>
-                    </button>
-                    <button className="flex items-center space-x-2 text-white/60 hover:text-green-400 transition-colors">
-                      <Share2 className="w-5 h-5" />
-                    </button>
-                  </div>
-                </div>
-              </div>
-            </div>
-          ))}
+  const Feed = () => (
+    <div className="max-w-2xl mx-auto p-6">
+      <PostCreator />
+      {posts.length === 0 ? (
+        <div className="text-center text-slate-400 py-8">
+          <p>Loading posts...</p>
+        </div>
+      ) : (
+        posts.map(post => (
+          <Post key={post._id} post={post} />
+        ))
+      )}
+    </div>
+  );
 
-          {posts.length === 0 && (
-            <div className="text-center py-12">
-              <div className="text-white/50 text-lg mb-2">No posts yet</div>
-              <div className="text-white/30">Be the first to share something authentic!</div>
+  const Profile = () => (
+    <div className="max-w-4xl mx-auto p-6">
+      <div className="bg-gradient-to-r from-slate-900/60 to-zinc-900/60 backdrop-blur-md rounded-2xl p-8 border border-slate-600/40 mb-6">
+        <div className="flex flex-col md:flex-row items-center md:items-start space-y-4 md:space-y-0 md:space-x-6 mb-6">
+          <div className="w-24 h-24 bg-gradient-to-r from-slate-600 to-zinc-600 rounded-full flex items-center justify-center text-white text-2xl font-semibold">
+            {user?.username?.slice(0, 2).toUpperCase() || 'YU'}
+          </div>
+          <div className="text-center md:text-left">
+            <h1 className="text-3xl font-bold text-white mb-2">{user?.username || 'Your Profile'}</h1>
+            <p className="text-slate-300 mb-4">Authentic • Transparent • Genuine</p>
+            <div className="flex justify-center md:justify-start space-x-4 text-sm text-slate-400">
+              <span>{user?.followers?.length || 127} Followers</span>
+              <span>{user?.following?.length || 89} Following</span>
+              <span>{posts.filter(p => p.userId?.username === user?.username).length || posts.length} Posts</span>
             </div>
+          </div>
+        </div>
+        <div className="border-t border-slate-600/40 pt-6">
+          <h2 className="text-xl font-semibold text-white mb-4">About</h2>
+          <p className="text-slate-200 leading-relaxed">
+            {user?.bio || 'Passionate about genuine connections and transparent communication. Fighting against digital stalking and promoting authentic social interactions. Committed to sophisticated, meaningful discourse.'}
+          </p>
+        </div>
+      </div>
+      
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+        <div className="bg-gradient-to-r from-slate-900/40 to-zinc-900/40 backdrop-blur-md rounded-xl p-6 border border-slate-600/30">
+          <h3 className="text-lg font-semibold text-white mb-3">Privacy Score</h3>
+          <div className="text-3xl font-bold text-indigo-400 mb-2">{user?.privacyScore || 94}%</div>
+          <p className="text-slate-400 text-sm">Excellent protection</p>
+        </div>
+        <div className="bg-gradient-to-r from-slate-900/40 to-zinc-900/40 backdrop-blur-md rounded-xl p-6 border border-slate-600/30">
+          <h3 className="text-lg font-semibold text-white mb-3">Transparency</h3>
+          <div className="text-3xl font-bold text-slate-400 mb-2">{user?.transparencyScore || 98}%</div>
+          <p className="text-slate-400 text-sm">Highly authentic</p>
+        </div>
+        <div className="bg-gradient-to-r from-slate-900/40 to-zinc-900/40 backdrop-blur-md rounded-xl p-6 border border-slate-600/30">
+          <h3 className="text-lg font-semibold text-white mb-3">Community</h3>
+          <div className="text-3xl font-bold text-purple-400 mb-2">{user?.communityScore || 96}%</div>
+          <p className="text-slate-400 text-sm">Great connections</p>
+        </div>
+      </div>
+    </div>
+  );
+
+  const Chat = () => (
+    <div className="max-w-6xl mx-auto p-6 flex flex-col lg:flex-row space-y-6 lg:space-y-0 lg:space-x-6 h-[calc(100vh-200px)]">
+      {/* Chat List */}
+      <div className="w-full lg:w-1/3 bg-gradient-to-r from-slate-900/60 to-zinc-900/60 backdrop-blur-md rounded-2xl border border-slate-600/40 overflow-hidden">
+        <div className="p-6 border-b border-slate-600/40">
+          <h2 className="text-xl font-semibold text-white mb-4">Messages</h2>
+          <div className="relative">
+            <Search className="absolute left-3 top-3 h-4 w-4 text-slate-500" />
+            <input
+              type="text"
+              placeholder="Search conversations..."
+              className="w-full pl-10 pr-4 py-2 bg-black/40 border border-slate-600/50 rounded-full text-white placeholder-slate-300 focus:outline-none focus:ring-2 focus:ring-slate-400"
+            />
+          </div>
+        </div>
+        <div className="overflow-y-auto max-h-96 lg:max-h-full">
+          {chats.length === 0 ? (
+            <div className="p-4 text-center text-slate-400">
+              <p>No conversations yet</p>
+            </div>
+          ) : (
+            chats.map(chat => (
+              <button
+                key={chat._id}
+                onClick={() => setSelectedChat(chat)}
+                className={`w-full p-4 text-left hover:bg-slate-700/30 transition-colors border-b border-slate-600/20 ${
+                  selectedChat?._id === chat._id ? 'bg-slate-700/40' : ''
+                }`}
+              >
+                <div className="flex items-center space-x-3">
+                  <div className="relative">
+                    <div className="w-12 h-12 bg-gradient-to-r from-slate-600 to-zinc-600 rounded-full flex items-center justify-center text-white font-semibold text-sm">
+                      {chat.participants?.[0]?.username?.slice(0, 2).toUpperCase() || 'UN'}
+                    </div>
+                    {chat.isOnline && (
+                      <div className="absolute -bottom-1 -right-1 w-4 h-4 bg-green-500 rounded-full border-2 border-slate-900"></div>
+                    )}
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <div className="font-semibold text-white">
+                      {chat.participants?.[0]?.username || 'Unknown User'}
+                    </div>
+                    <div className="text-sm text-slate-400 truncate">
+                      {chat.lastMessage?.content || 'No messages yet'}
+                    </div>
+                  </div>
+                </div>
+              </button>
+            ))
           )}
         </div>
       </div>
-    </div>
-  );
 
-  const renderProfile = () => (
-    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-purple-900 to-indigo-900">
-      <ErrorAlert />
-      {renderNavigation()}
-
-      <div className="max-w-4xl mx-auto px-4 py-6">
-        <div className="bg-black/40 backdrop-blur-md border border-yellow-400/30 rounded-2xl p-8 shadow-xl">
-          <div className="flex items-start space-x-6 mb-8">
-            <div className="w-24 h-24 bg-gradient-to-br from-yellow-400 to-yellow-600 rounded-full flex items-center justify-center">
-              <span className="text-3xl">{currentUser?.avatar || '✨'}</span>
-            </div>
-            <div className="flex-1">
-              <div className="flex items-center space-x-3 mb-2">
-                <h1 className="text-3xl font-bold text-white">{currentUser?.name}</h1>
-                {currentUser?.verified && <Shield className="w-6 h-6 text-yellow-400" />}
+      {/* Chat Window */}
+      <div className="flex-1 bg-gradient-to-r from-slate-900/40 to-zinc-900/40 backdrop-blur-md rounded-2xl border border-slate-600/30 flex flex-col min-h-96">
+        {selectedChat ? (
+          <>
+            <div className="p-6 border-b border-slate-600/40 flex items-center space-x-4">
+              <div className="w-10 h-10 bg-gradient-to-r from-slate-600 to-zinc-600 rounded-full flex items-center justify-center text-white font-semibold text-sm">
+                {selectedChat.participants?.[0]?.username?.slice(0, 2).toUpperCase() || 'UN'}
               </div>
-              <p className="text-white/70 mb-4">Authentic communication advocate • Building genuine connections</p>
-              <div className="flex space-x-6 text-sm">
-                <span className="text-white/60"><strong className="text-white">127</strong> Following</span>
-                <span className="text-white/60"><strong className="text-white">1.2K</strong> Followers</span>
-                <span className="text-white/60"><strong className="text-white">{posts.filter(p => p.author?.name === currentUser?.name).length}</strong> Posts</span>
+              <div>
+                <div className="font-semibold text-white">
+                  {selectedChat.participants?.[0]?.username || 'Unknown User'}
+                </div>
+                <div className={`text-sm ${selectedChat.isOnline ? 'text-green-400' : 'text-slate-400'}`}>
+                  {selectedChat.isOnline ? 'Online' : 'Offline'}
+                </div>
               </div>
             </div>
-            <button className="px-6 py-2 bg-gradient-to-r from-yellow-500 to-yellow-600 text-purple-900 font-semibold rounded-lg hover:from-yellow-400 hover:to-yellow-500 transition-all">
-              Edit Profile
-            </button>
-          </div>
-
-          <div className="border-t border-yellow-400/30 pt-8">
-            <h2 className="text-xl font-semibold text-white mb-6">Recent Posts</h2>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              {posts.filter(post => post.author?.name === currentUser?.name).map(post => (
-                <div key={post._id || post.id} className="bg-white/5 border border-yellow-400/20 rounded-xl p-4">
-                  <p className="text-white/90 mb-3">{post.content}</p>
-                  <div className="flex items-center justify-between text-sm text-white/50">
-                    <span>{formatTimeAgo(post.createdAt || post.timestamp)}</span>
-                    <div className="flex space-x-4">
-                      <span>❤️ {Array.isArray(post.likes) ? post.likes.length : post.likes || 0}</span>
-                      <span>💬 {post.comments?.length || post.comments || 0}</span>
-                    </div>
+            
+            <div className="flex-1 p-6 overflow-y-auto">
+              <div className="space-y-4">
+                <div className="flex justify-start">
+                  <div className="bg-slate-700/60 rounded-2xl rounded-bl-md px-4 py-2 max-w-xs">
+                    <p className="text-white">{selectedChat.lastMessage?.content}</p>
                   </div>
                 </div>
-              ))}
-            </div>
-
-            {posts.filter(post => post.author?.name === currentUser?.name).length === 0 && (
-              <div className="text-center py-8 text-white/50">
-                You haven't posted anything yet. Share your first authentic thought!
+                <div className="flex justify-end">
+                  <div className="bg-zinc-700/60 rounded-2xl rounded-br-md px-4 py-2 max-w-xs">
+                    <p className="text-white">Thanks! Transparency is key 🔑</p>
+                  </div>
+                </div>
+                <div className="flex justify-start">
+                  <div className="bg-slate-700/60 rounded-2xl rounded-bl-md px-4 py-2 max-w-xs">
+                    <p className="text-white">Absolutely! The anti-stalker features are game-changing</p>
+                  </div>
+                </div>
               </div>
-            )}
+            </div>
+            
+            <div className="p-6 border-t border-slate-600/40">
+              <div className="flex space-x-4">
+                <input
+                  type="text"
+                  value={chatMessage}
+                  onChange={(e) => setChatMessage(e.target.value)}
+                  onKeyPress={(e) => e.key === 'Enter' && handleSendMessage()}
+                  placeholder="Send a transparent message..."
+                  className="flex-1 p-3 bg-black/40 border border-slate-600/50 rounded-full text-white placeholder-slate-300 focus:outline-none focus:ring-2 focus:ring-slate-400"
+                />
+                <button
+                  onClick={handleSendMessage}
+                  className="p-3 bg-gradient-to-r from-slate-700 to-zinc-700 text-white rounded-lg hover:scale-105 transform transition-all duration-300 border-2 border-amber-600/70 hover:border-amber-500"
+                >
+                  <Send className="h-5 w-5" />
+                </button>
+              </div>
+            </div>
+          </>
+        ) : (
+          <div className="flex-1 flex items-center justify-center">
+            <div className="text-center text-slate-400">
+              <MessageCircle className="h-16 w-16 mx-auto mb-4 opacity-50" />
+              <p className="text-xl">Select a conversation to start chatting</p>
+            </div>
           </div>
-        </div>
+        )}
       </div>
     </div>
   );
 
-  const renderChat = () => (
-    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-purple-900 to-indigo-900">
-      <ErrorAlert />
-      {renderNavigation()}
-
-      <div className="max-w-6xl mx-auto px-4 py-6">
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 h-[calc(100vh-200px)]">
-          {/* Chat List */}
-          <div className="bg-black/40 backdrop-blur-md border border-yellow-400/30 rounded-2xl p-4 shadow-xl">
-            <h2 className="text-xl font-semibold text-white mb-4">Messages</h2>
-            <div className="space-y-2">
-              {chats.map(chat => {
-                const otherUser = chat.participants?.find(p => p._id !== currentUser?.id);
-                const lastMessage = chat.messages?.[chat.messages.length - 1];
-
-                return (
-                  <button
-                    key={chat._id}
-                    onClick={() => {
-                      setSelectedChat(chat);
-                      if (socket) {
-                        socket.emit('join-chat', chat._id);
-                      }
-                    }}
-                    className={`w-full p-3 rounded-xl text-left transition-colors ${selectedChat?._id === chat._id ? 'bg-yellow-400/20' : 'hover:bg-white/5'
-                      }`}
-                  >
-                    <div className="flex items-center space-x-3">
-                      <div className="w-10 h-10 bg-gradient-to-br from-indigo-500 to-purple-600 rounded-full flex items-center justify-center">
-                        <span>{otherUser?.avatar || '👤'}</span>
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center justify-between">
-                          <span className="font-medium text-white">{otherUser?.name || 'Unknown'}</span>
-                          <span className="text-xs text-white/50">
-                            {lastMessage ? formatTimeAgo(lastMessage.createdAt) : ''}
-                          </span>
-                        </div>
-                        <p className="text-sm text-white/70 truncate">
-                          {lastMessage?.content || 'No messages yet'}
-                        </p>
-                      </div>
-                    </div>
-                  </button>
-                );
-              })}
-
-              {chats.length === 0 && (
-                <div className="text-center py-8 text-white/50">
-                  No conversations yet. Start connecting with others!
-                </div>
-              )}
-            </div>
-          </div>
-
-          {/* Chat Window */}
-          <div className="md:col-span-2 bg-black/40 backdrop-blur-md border border-yellow-400/30 rounded-2xl shadow-xl flex flex-col">
-            {selectedChat ? (
-              <>
-                {/* Chat Header */}
-                <div className="p-4 border-b border-yellow-400/30">
-                  <div className="flex items-center space-x-3">
-                    <div className="w-10 h-10 bg-gradient-to-br from-indigo-500 to-purple-600 rounded-full flex items-center justify-center">
-                      <span>{selectedChat.participants?.find(p => p._id !== currentUser?.id)?.avatar || '👤'}</span>
-                    </div>
-                    <div>
-                      <div className="flex items-center space-x-2">
-                        <span className="font-medium text-white">
-                          {selectedChat.participants?.find(p => p._id !== currentUser?.id)?.name || 'Unknown'}
-                        </span>
-                        <Shield className="w-4 h-4 text-yellow-400" />
-                      </div>
-                      <span className="text-sm text-green-400">● Online</span>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Messages */}
-                <div className="flex-1 p-4 overflow-y-auto">
-                  <div className="space-y-4">
-                    {selectedChat.messages?.map((message, index) => {
-                      const isOwnMessage = message.sender?._id === currentUser?.id || message.sender === currentUser?.id;
-
-                      return (
-                        <div key={index} className={`flex ${isOwnMessage ? 'justify-end' : 'justify-start'}`}>
-                          <div className={`rounded-2xl p-3 max-w-xs ${isOwnMessage
-                              ? 'bg-gradient-to-r from-yellow-500 to-yellow-600 rounded-tr-md'
-                              : 'bg-white/10 rounded-tl-md'
-                            }`}>
-                            <p className={isOwnMessage ? 'text-purple-900' : 'text-white/90'}>
-                              {message.content}
-                            </p>
-                            <span className={`text-xs ${isOwnMessage ? 'text-purple-700' : 'text-white/50'
-                              }`}>
-                              {formatTimeAgo(message.createdAt)}
-                            </span>
-                          </div>
-                        </div>
-                      );
-                    }) || []}
-                    <div ref={messagesEndRef} />
-                  </div>
-                </div>
-
-                {/* Message Input */}
-                <div className="p-4 border-t border-yellow-400/30">
-                  <div className="flex space-x-3">
-                    <input
-                      type="text"
-                      value={chatMessage}
-                      onChange={(e) => setChatMessage(e.target.value)}
-                      placeholder="Type a message..."
-                      className="flex-1 bg-white/10 border border-yellow-400/30 rounded-xl px-4 py-2 text-white placeholder-white/50 focus:outline-none focus:border-yellow-400"
-                      onKeyPress={(e) => {
-                        if (e.key === 'Enter') {
-                          sendMessage();
-                        }
-                      }}
-                    />
-                    <button
-                      onClick={sendMessage}
-                      disabled={!chatMessage.trim()}
-                      className="p-2 bg-gradient-to-r from-yellow-500 to-yellow-600 text-purple-900 rounded-xl hover:from-yellow-400 hover:to-yellow-500 transition-all disabled:opacity-50"
-                    >
-                      <Send className="w-5 h-5" />
-                    </button>
-                  </div>
-                </div>
-              </>
-            ) : (
-              <div className="flex-1 flex items-center justify-center">
-                <div className="text-center">
-                  <MessageSquare className="w-16 h-16 text-white/30 mx-auto mb-4" />
-                  <p className="text-white/50">Select a conversation to start messaging</p>
-                </div>
-              </div>
-            )}
-          </div>
-        </div>
+  // Show loading state during hydration
+  if (!isClient) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-gray-900 via-slate-900 to-zinc-900 flex items-center justify-center">
+        <div className="text-white text-2xl">Loading SickoScoop...</div>
       </div>
-    </div>
-  );
+    );
+  }
 
-  // Main return statement
+  if (!isLoggedIn) {
+    return <LandingPage />;
+  }
+
   return (
-    <div className="relative">
-      {/* Authentication Logic */}
-      {!isLoggedIn ? (
-        // Not logged in - show auth views
-        <>
-          {currentView === 'login' && renderAuth('login')}
-          {currentView === 'signup' && renderAuth('signup')}
-          {currentView === 'landing' && renderLandingPage()}
-        </>
-      ) : (
-        // Logged in - show main app views
-        <>
-          {currentView === 'profile' && renderProfile()}
-          {currentView === 'chat' && renderChat()}
-          {currentView === 'feed' && renderFeed()}
-          {/* Add other authenticated views as needed */}
-        </>
-      )}
-
-      {/* Notifications */}
-      {error && (
-        <div className="notification error">{error}</div>
-      )}
-      {success && (
-        <div className="notification success">{success}</div>
-      )}
+    <div className="min-h-screen bg-gradient-to-br from-gray-900 via-slate-900 to-zinc-900 relative overflow-hidden border-4 border-orange-600/80">
+      {/* Background Effects */}
+      <div className="absolute inset-0 opacity-8">
+        <div className="absolute top-20 left-1/4 w-64 h-64 bg-gradient-to-r from-purple-800 to-indigo-700 rounded-full blur-3xl animate-pulse"></div>
+        <div className="absolute bottom-20 right-1/4 w-80 h-80 bg-gradient-to-r from-slate-700 to-zinc-600 rounded-full blur-3xl animate-pulse delay-1000"></div>
+      </div>
+      
+      <div className="relative z-10">
+        <Header />
+        <main className="container mx-auto">
+          {currentView === 'feed' && <Feed />}
+          {currentView === 'profile' && <Profile />}
+          {currentView === 'chat' && <Chat />}
+        </main>
+      </div>
     </div>
   );
 };
