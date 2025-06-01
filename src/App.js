@@ -1,7 +1,199 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { Heart, MessageCircle, Share2, Send, Upload, Image, Video, FileText, Mic, User, Search, Settings, Plus, X } from 'lucide-react';
 
 const API_BASE = 'https://sickoscoop-backend-deo45.ondigitalocean.app/api';
+
+// Move LandingPage outside to prevent re-creation
+const LandingPage = React.memo(({ 
+  loginForm, 
+  setLoginForm, 
+  registerForm, 
+  setRegisterForm, 
+  showRegister, 
+  setShowRegister, 
+  handleLogin, 
+  handleRegister, 
+  loading, 
+  error 
+}) => (
+  <div className="min-h-screen relative overflow-hidden border-4 border-orange-600/80">
+    {/* Animated Background */}
+    <div className="absolute inset-0 bg-gradient-to-br from-gray-900 via-slate-900 to-zinc-900">
+      <div className="absolute inset-0 opacity-10">
+        <div className="absolute top-10 left-10 w-32 h-32 bg-gradient-to-r from-purple-800 to-indigo-700 rounded-full blur-xl animate-pulse"></div>
+        <div className="absolute top-40 right-20 w-24 h-24 bg-gradient-to-r from-slate-700 to-gray-600 rounded-full blur-lg animate-pulse delay-1000"></div>
+        <div className="absolute bottom-20 left-1/3 w-40 h-40 bg-gradient-to-r from-zinc-800 to-slate-700 rounded-full blur-2xl animate-pulse delay-2000"></div>
+      </div>
+    </div>
+
+    <div className="relative z-10 flex flex-col items-center justify-center min-h-screen p-8 text-center">
+      {/* Logo */}
+      <div className="mb-8 relative">
+        <div className="text-6xl md:text-8xl font-bold bg-gradient-to-r from-slate-300 via-purple-400 to-indigo-400 bg-clip-text text-transparent">
+          SickoScoop
+        </div>
+      </div>
+
+      {/* Main Title */}
+      <h1 className="text-4xl md:text-6xl font-bold text-white mb-10 drop-shadow-2xl leading-none">
+        <span className="whitespace-nowrap">STOP STALKERS</span>
+        <br />
+        <span className="text-2xl md:text-4xl block my-2">ON</span>
+        <span className="bg-gradient-to-r from-orange-300 via-red-400 via-blue-400 to-indigo-400 bg-clip-text text-transparent block animate-pulse relative">
+          <span className="absolute inset-0 bg-gradient-to-r from-orange-200 via-red-300 via-cyan-300 to-blue-300 bg-clip-text text-transparent blur-sm opacity-80"></span>
+          <span className="absolute inset-0 bg-gradient-to-r from-amber-300 via-rose-300 via-sky-300 to-violet-300 bg-clip-text text-transparent blur-xs opacity-40"></span>
+          SICKOSCOOP
+        </span>
+      </h1>
+
+      {/* Subtitle */}
+      <div className="inline-block border-2 border-amber-500/80 rounded-lg px-6 py-3 mb-12">
+        <p className="text-xl md:text-2xl text-slate-300 leading-relaxed">
+          revelation & transparency
+        </p>
+      </div>
+
+      {/* Demo Login Info */}
+      <div className="mb-4 p-3 bg-blue-500/20 border border-blue-500/50 rounded-lg text-blue-300 max-w-md">
+        Demo Login: demo@sickoscoop.com / demo
+      </div>
+
+      {/* Error Display */}
+      {error && (
+        <div className="mb-4 p-3 bg-red-500/20 border border-red-500/50 rounded-lg text-red-300 max-w-md">
+          {error}
+        </div>
+      )}
+
+      {/* Auth Forms */}
+      <div className="mb-8 w-full max-w-md">
+        {!showRegister ? (
+          <div className="space-y-4">
+            <input
+              type="email"
+              placeholder="Email"
+              value={loginForm.email}
+              onChange={(e) => setLoginForm(prev => ({ ...prev, email: e.target.value }))}
+              onKeyDown={(e) => e.key === 'Enter' && handleLogin()}
+              autoComplete="email"
+              className="w-full p-3 bg-black/40 border border-slate-600/50 rounded-lg text-white placeholder-slate-300 focus:outline-none focus:ring-2 focus:ring-slate-400"
+            />
+            <input
+              type="password"
+              placeholder="Password"
+              value={loginForm.password}
+              onChange={(e) => setLoginForm(prev => ({ ...prev, password: e.target.value }))}
+              onKeyDown={(e) => e.key === 'Enter' && handleLogin()}
+              autoComplete="current-password"
+              className="w-full p-3 bg-black/40 border border-slate-600/50 rounded-lg text-white placeholder-slate-300 focus:outline-none focus:ring-2 focus:ring-slate-400"
+            />
+            <button
+              onClick={handleLogin}
+              disabled={loading}
+              className="w-full px-12 py-4 bg-gradient-to-r from-gray-900 via-slate-800 to-black text-white text-xl font-semibold rounded-lg hover:scale-105 transform transition-all duration-300 shadow-2xl hover:shadow-amber-500/50 border-2 border-amber-500/80 hover:border-amber-400 hover:from-gray-800 hover:via-slate-700 hover:to-gray-900 disabled:opacity-50"
+            >
+              {loading ? 'Entering...' : 'Enter Sicko'}
+            </button>
+          </div>
+        ) : (
+          <div className="space-y-4">
+            <input
+              type="text"
+              placeholder="Username"
+              value={registerForm.username}
+              onChange={(e) => setRegisterForm(prev => ({ ...prev, username: e.target.value }))}
+              onKeyDown={(e) => e.key === 'Enter' && handleRegister()}
+              autoComplete="username"
+              className="w-full p-3 bg-black/40 border border-slate-600/50 rounded-lg text-white placeholder-slate-300 focus:outline-none focus:ring-2 focus:ring-slate-400"
+            />
+            <input
+              type="email"
+              placeholder="Email"
+              value={registerForm.email}
+              onChange={(e) => setRegisterForm(prev => ({ ...prev, email: e.target.value }))}
+              onKeyDown={(e) => e.key === 'Enter' && handleRegister()}
+              autoComplete="email"
+              className="w-full p-3 bg-black/40 border border-slate-600/50 rounded-lg text-white placeholder-slate-300 focus:outline-none focus:ring-2 focus:ring-slate-400"
+            />
+            <input
+              type="password"
+              placeholder="Password"
+              value={registerForm.password}
+              onChange={(e) => setRegisterForm(prev => ({ ...prev, password: e.target.value }))}
+              onKeyDown={(e) => e.key === 'Enter' && handleRegister()}
+              autoComplete="new-password"
+              className="w-full p-3 bg-black/40 border border-slate-600/50 rounded-lg text-white placeholder-slate-300 focus:outline-none focus:ring-2 focus:ring-slate-400"
+            />
+            <button
+              onClick={handleRegister}
+              disabled={loading}
+              className="w-full px-12 py-4 bg-gradient-to-r from-gray-900 via-slate-800 to-black text-white text-xl font-semibold rounded-lg hover:scale-105 transform transition-all duration-300 shadow-2xl hover:shadow-amber-500/50 border-2 border-amber-500/80 hover:border-amber-400 hover:from-gray-800 hover:via-slate-700 hover:to-gray-900 disabled:opacity-50"
+            >
+              {loading ? 'Creating Account...' : 'Join Sicko'}
+            </button>
+          </div>
+        )}
+        
+        <button
+          onClick={() => setShowRegister(!showRegister)}
+          className="mt-4 text-slate-300 hover:text-white transition-colors"
+        >
+          {showRegister ? 'Already have an account? Sign in' : 'Need an account? Register'}
+        </button>
+      </div>
+
+      {/* Features */}
+      <div className="mt-16 grid grid-cols-1 md:grid-cols-3 gap-8 max-w-4xl">
+        {[
+          { 
+            icon: (
+              <div className="relative w-12 h-12">
+                <div className="absolute inset-0 bg-gradient-to-br from-purple-300 via-indigo-400 to-violet-500 rounded-full opacity-80 blur-sm"></div>
+                <div className="absolute inset-1 bg-gradient-to-tr from-orange-300 via-orange-400 to-blue-500 rounded-full opacity-90 animate-pulse"></div>
+                <div className="absolute inset-2 bg-gradient-to-bl from-blue-300 via-purple-400 to-indigo-500 rounded-full opacity-70"></div>
+                <div className="absolute inset-3 bg-gradient-to-tl from-orange-300 via-purple-300 to-blue-400 rounded-full animate-pulse"></div>
+              </div>
+            ), 
+            title: 'Anti-Stalker Protection', 
+            desc: 'Advanced privacy controls' 
+          },
+          { 
+            icon: (
+              <div className="relative w-12 h-12">
+                <div className="absolute inset-0 bg-gradient-to-br from-purple-300 via-indigo-400 to-violet-500 transform rotate-45 opacity-80 blur-sm"></div>
+                <div className="absolute inset-1 bg-gradient-to-tr from-orange-300 via-orange-400 to-blue-500 transform rotate-45 opacity-90 animate-pulse"></div>
+                <div className="absolute inset-2 bg-gradient-to-bl from-blue-300 via-purple-400 to-indigo-500 transform rotate-45 opacity-70"></div>
+                <div className="absolute inset-3 bg-gradient-to-tl from-orange-300 via-purple-300 to-blue-400 transform rotate-45 animate-pulse"></div>
+              </div>
+            ), 
+            title: 'Decency', 
+            desc: 'No anonymous trolls' 
+          },
+          { 
+            icon: (
+              <div className="relative w-12 h-12">
+                <div className="absolute inset-0 bg-gradient-to-br from-violet-400 via-purple-500 to-indigo-600 opacity-80 blur-sm" style={{clipPath: 'polygon(50% 0%, 0% 100%, 100% 100%)'}}></div>
+                <div className="absolute inset-1 bg-gradient-to-tr from-orange-400 via-blue-700 to-amber-500 opacity-90 animate-pulse" style={{clipPath: 'polygon(50% 0%, 0% 100%, 100% 100%)'}}></div>
+                <div className="absolute inset-2 bg-gradient-to-bl from-teal-400 via-cyan-500 to-blue-600 opacity-70" style={{clipPath: 'polygon(50% 0%, 0% 100%, 100% 100%)'}}></div>
+                <div className="absolute inset-3 bg-gradient-to-tl from-blue-900 via-indigo-800 to-slate-800 animate-pulse" style={{clipPath: 'polygon(50% 0%, 0% 100%, 100% 100%)'}}></div>
+              </div>
+            ), 
+            title: 'Genuine Community', 
+            desc: 'Keeping everyone safe' 
+          }
+        ].map((feature, idx) => (
+          <div key={idx} className="bg-black/20 backdrop-blur-md rounded-2xl p-6 border border-slate-600/30 hover:bg-black/30 transition-all duration-300">
+            <div className="inline-block border-2 border-amber-500/80 rounded-lg p-3 mb-4 bg-black/30">
+              {feature.icon}
+            </div>
+            <h3 className="text-xl font-semibold text-white mb-2">{feature.title}</h3>
+            <p className="text-slate-300">{feature.desc}</p>
+          </div>
+        ))}
+      </div>
+    </div>
+  </div>
+));
 
 const SickoScoopApp = () => {
   const [currentView, setCurrentView] = useState('landing');
@@ -371,181 +563,6 @@ const SickoScoopApp = () => {
     console.log('Sending message:', chatMessage, 'to:', selectedChat.participants[0]?.username);
     setChatMessage('');
   };
-
-  const LandingPage = () => (
-    <div className="min-h-screen relative overflow-hidden border-4 border-orange-600/80">
-      {/* Animated Background */}
-      <div className="absolute inset-0 bg-gradient-to-br from-gray-900 via-slate-900 to-zinc-900">
-        <div className="absolute inset-0 opacity-10">
-          <div className="absolute top-10 left-10 w-32 h-32 bg-gradient-to-r from-purple-800 to-indigo-700 rounded-full blur-xl animate-pulse"></div>
-          <div className="absolute top-40 right-20 w-24 h-24 bg-gradient-to-r from-slate-700 to-gray-600 rounded-full blur-lg animate-pulse delay-1000"></div>
-          <div className="absolute bottom-20 left-1/3 w-40 h-40 bg-gradient-to-r from-zinc-800 to-slate-700 rounded-full blur-2xl animate-pulse delay-2000"></div>
-        </div>
-      </div>
-
-      <div className="relative z-10 flex flex-col items-center justify-center min-h-screen p-8 text-center">
-        {/* Logo */}
-        <div className="mb-8 relative">
-          <div className="text-6xl md:text-8xl font-bold bg-gradient-to-r from-slate-300 via-purple-400 to-indigo-400 bg-clip-text text-transparent">
-            SickoScoop
-          </div>
-        </div>
-
-        {/* Main Title */}
-        <h1 className="text-4xl md:text-6xl font-bold text-white mb-10 drop-shadow-2xl leading-none">
-          <span className="whitespace-nowrap">STOP STALKERS</span>
-          <br />
-          <span className="text-2xl md:text-4xl block my-2">ON</span>
-          <span className="bg-gradient-to-r from-orange-300 via-red-400 via-blue-400 to-indigo-400 bg-clip-text text-transparent block animate-pulse relative">
-            <span className="absolute inset-0 bg-gradient-to-r from-orange-200 via-red-300 via-cyan-300 to-blue-300 bg-clip-text text-transparent blur-sm opacity-80"></span>
-            <span className="absolute inset-0 bg-gradient-to-r from-amber-300 via-rose-300 via-sky-300 to-violet-300 bg-clip-text text-transparent blur-xs opacity-40"></span>
-            SICKOSCOOP
-          </span>
-        </h1>
-
-        {/* Subtitle */}
-        <div className="inline-block border-2 border-amber-500/80 rounded-lg px-6 py-3 mb-12">
-          <p className="text-xl md:text-2xl text-slate-300 leading-relaxed">
-            revelation & transparency
-          </p>
-        </div>
-
-        {/* Demo Login Info */}
-        <div className="mb-4 p-3 bg-blue-500/20 border border-blue-500/50 rounded-lg text-blue-300 max-w-md">
-          Demo Login: demo@sickoscoop.com / demo
-        </div>
-
-        {/* Error Display */}
-        {error && (
-          <div className="mb-4 p-3 bg-red-500/20 border border-red-500/50 rounded-lg text-red-300 max-w-md">
-            {error}
-          </div>
-        )}
-
-        {/* Auth Forms */}
-        <div className="mb-8 w-full max-w-md">
-          {!showRegister ? (
-            <div className="space-y-4">
-              <input
-                type="email"
-                placeholder="Email"
-                value={loginForm.email}
-                onChange={(e) => setLoginForm({...loginForm, email: e.target.value})}
-                onKeyPress={(e) => e.key === 'Enter' && handleLogin()}
-                className="w-full p-3 bg-black/40 border border-slate-600/50 rounded-lg text-white placeholder-slate-300 focus:outline-none focus:ring-2 focus:ring-slate-400"
-              />
-              <input
-                type="password"
-                placeholder="Password"
-                value={loginForm.password}
-                onChange={(e) => setLoginForm({...loginForm, password: e.target.value})}
-                onKeyPress={(e) => e.key === 'Enter' && handleLogin()}
-                className="w-full p-3 bg-black/40 border border-slate-600/50 rounded-lg text-white placeholder-slate-300 focus:outline-none focus:ring-2 focus:ring-slate-400"
-              />
-              <button
-                onClick={handleLogin}
-                disabled={loading}
-                className="w-full px-12 py-4 bg-gradient-to-r from-gray-900 via-slate-800 to-black text-white text-xl font-semibold rounded-lg hover:scale-105 transform transition-all duration-300 shadow-2xl hover:shadow-amber-500/50 border-2 border-amber-500/80 hover:border-amber-400 hover:from-gray-800 hover:via-slate-700 hover:to-gray-900 disabled:opacity-50"
-              >
-                {loading ? 'Entering...' : 'Enter Sicko'}
-              </button>
-            </div>
-          ) : (
-            <div className="space-y-4">
-              <input
-                type="text"
-                placeholder="Username"
-                value={registerForm.username}
-                onChange={(e) => setRegisterForm({...registerForm, username: e.target.value})}
-                onKeyPress={(e) => e.key === 'Enter' && handleRegister()}
-                className="w-full p-3 bg-black/40 border border-slate-600/50 rounded-lg text-white placeholder-slate-300 focus:outline-none focus:ring-2 focus:ring-slate-400"
-              />
-              <input
-                type="email"
-                placeholder="Email"
-                value={registerForm.email}
-                onChange={(e) => setRegisterForm({...registerForm, email: e.target.value})}
-                onKeyPress={(e) => e.key === 'Enter' && handleRegister()}
-                className="w-full p-3 bg-black/40 border border-slate-600/50 rounded-lg text-white placeholder-slate-300 focus:outline-none focus:ring-2 focus:ring-slate-400"
-              />
-              <input
-                type="password"
-                placeholder="Password"
-                value={registerForm.password}
-                onChange={(e) => setRegisterForm({...registerForm, password: e.target.value})}
-                onKeyPress={(e) => e.key === 'Enter' && handleRegister()}
-                className="w-full p-3 bg-black/40 border border-slate-600/50 rounded-lg text-white placeholder-slate-300 focus:outline-none focus:ring-2 focus:ring-slate-400"
-              />
-              <button
-                onClick={handleRegister}
-                disabled={loading}
-                className="w-full px-12 py-4 bg-gradient-to-r from-gray-900 via-slate-800 to-black text-white text-xl font-semibold rounded-lg hover:scale-105 transform transition-all duration-300 shadow-2xl hover:shadow-amber-500/50 border-2 border-amber-500/80 hover:border-amber-400 hover:from-gray-800 hover:via-slate-700 hover:to-gray-900 disabled:opacity-50"
-              >
-                {loading ? 'Creating Account...' : 'Join Sicko'}
-              </button>
-            </div>
-          )}
-          
-          <button
-            onClick={() => setShowRegister(!showRegister)}
-            className="mt-4 text-slate-300 hover:text-white transition-colors"
-          >
-            {showRegister ? 'Already have an account? Sign in' : 'Need an account? Register'}
-          </button>
-        </div>
-
-        {/* Features */}
-        <div className="mt-16 grid grid-cols-1 md:grid-cols-3 gap-8 max-w-4xl">
-          {[
-            { 
-              icon: (
-                <div className="relative w-12 h-12">
-                  <div className="absolute inset-0 bg-gradient-to-br from-purple-300 via-indigo-400 to-violet-500 rounded-full opacity-80 blur-sm"></div>
-                  <div className="absolute inset-1 bg-gradient-to-tr from-orange-300 via-orange-400 to-blue-500 rounded-full opacity-90 animate-pulse"></div>
-                  <div className="absolute inset-2 bg-gradient-to-bl from-blue-300 via-purple-400 to-indigo-500 rounded-full opacity-70"></div>
-                  <div className="absolute inset-3 bg-gradient-to-tl from-orange-300 via-purple-300 to-blue-400 rounded-full animate-pulse"></div>
-                </div>
-              ), 
-              title: 'Anti-Stalker Protection', 
-              desc: 'Advanced privacy controls' 
-            },
-            { 
-              icon: (
-                <div className="relative w-12 h-12">
-                  <div className="absolute inset-0 bg-gradient-to-br from-purple-300 via-indigo-400 to-violet-500 transform rotate-45 opacity-80 blur-sm"></div>
-                  <div className="absolute inset-1 bg-gradient-to-tr from-orange-300 via-orange-400 to-blue-500 transform rotate-45 opacity-90 animate-pulse"></div>
-                  <div className="absolute inset-2 bg-gradient-to-bl from-blue-300 via-purple-400 to-indigo-500 transform rotate-45 opacity-70"></div>
-                  <div className="absolute inset-3 bg-gradient-to-tl from-orange-300 via-purple-300 to-blue-400 transform rotate-45 animate-pulse"></div>
-                </div>
-              ), 
-              title: 'Decency', 
-              desc: 'No anonymous trolls' 
-            },
-            { 
-              icon: (
-                <div className="relative w-12 h-12">
-                  <div className="absolute inset-0 bg-gradient-to-br from-violet-400 via-purple-500 to-indigo-600 opacity-80 blur-sm" style={{clipPath: 'polygon(50% 0%, 0% 100%, 100% 100%)'}}></div>
-                  <div className="absolute inset-1 bg-gradient-to-tr from-orange-400 via-blue-700 to-amber-500 opacity-90 animate-pulse" style={{clipPath: 'polygon(50% 0%, 0% 100%, 100% 100%)'}}></div>
-                  <div className="absolute inset-2 bg-gradient-to-bl from-teal-400 via-cyan-500 to-blue-600 opacity-70" style={{clipPath: 'polygon(50% 0%, 0% 100%, 100% 100%)'}}></div>
-                  <div className="absolute inset-3 bg-gradient-to-tl from-blue-900 via-indigo-800 to-slate-800 animate-pulse" style={{clipPath: 'polygon(50% 0%, 0% 100%, 100% 100%)'}}></div>
-                </div>
-              ), 
-              title: 'Genuine Community', 
-              desc: 'Keeping everyone safe' 
-            }
-          ].map((feature, idx) => (
-            <div key={idx} className="bg-black/20 backdrop-blur-md rounded-2xl p-6 border border-slate-600/30 hover:bg-black/30 transition-all duration-300">
-              <div className="inline-block border-2 border-amber-500/80 rounded-lg p-3 mb-4 bg-black/30">
-                {feature.icon}
-              </div>
-              <h3 className="text-xl font-semibold text-white mb-2">{feature.title}</h3>
-              <p className="text-slate-300">{feature.desc}</p>
-            </div>
-          ))}
-        </div>
-      </div>
-    </div>
-  );
 
   const Header = () => (
     <header className="bg-gradient-to-r from-gray-900 via-slate-900 to-zinc-900 shadow-2xl border-b border-slate-700/50">
@@ -920,7 +937,20 @@ const SickoScoopApp = () => {
   }
 
   if (!isLoggedIn) {
-    return <LandingPage />;
+    return (
+      <LandingPage
+        loginForm={loginForm}
+        setLoginForm={setLoginForm}
+        registerForm={registerForm}
+        setRegisterForm={setRegisterForm}
+        showRegister={showRegister}
+        setShowRegister={setShowRegister}
+        handleLogin={handleLogin}
+        handleRegister={handleRegister}
+        loading={loading}
+        error={error}
+      />
+    );
   }
 
   return (
