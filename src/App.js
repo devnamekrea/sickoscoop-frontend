@@ -16,7 +16,8 @@ const LandingPage = React.memo(({
   handleLogin, 
   handleRegister, 
   loading, 
-  error 
+  error,
+  onBrowsePublic
 }) => (
   <div className="min-h-screen relative overflow-hidden border-4 border-orange-600/80">
     {/* Animated Background */}
@@ -55,14 +56,23 @@ const LandingPage = React.memo(({
         </p>
       </div>
 
+      {/* Browse Public Feed Button */}
+      <div className="mb-8">
+        <button
+          onClick={onBrowsePublic}
+          className="px-8 py-3 bg-gradient-to-r from-slate-700/60 to-zinc-700/60 text-white text-lg font-medium rounded-lg hover:scale-105 transform transition-all duration-300 border-2 border-slate-500/60 hover:border-slate-400 backdrop-blur-md"
+        >
+          🌍 Browse Public Feed
+        </button>
+        <p className="text-slate-400 text-sm mt-2">See what people are sharing • No account required</p>
+      </div>
+
       {/* Error Display */}
       {error && (
         <div className="mb-4 p-3 bg-red-500/20 border border-red-500/50 rounded-lg text-red-300 max-w-md">
           {error}
         </div>
       )}
-
-
 
       {/* Auth Forms */}
       <div className="mb-8 w-full max-w-md">
@@ -194,12 +204,622 @@ const LandingPage = React.memo(({
   </div>
 ));
 
+// Move ConnectionStatus outside to prevent re-creation
+const ConnectionStatus = React.memo(({ apiStatus }) => (
+  <div className={`text-xs px-2 py-1 rounded-full ${
+    apiStatus === 'connected' 
+      ? 'bg-green-500/20 text-green-400' 
+      : apiStatus === 'disconnected'
+      ? 'bg-red-500/20 text-red-400'
+      : 'bg-yellow-500/20 text-yellow-400'
+  }`}>
+    {apiStatus === 'connected' ? '● Connected' : 
+     apiStatus === 'disconnected' ? '● Demo Mode' : '● Checking...'}
+  </div>
+));
+
+// Move Header outside to prevent re-creation
+const Header = React.memo(({ 
+  currentView, 
+  setCurrentView, 
+  apiStatus, 
+  handleLogout, 
+  user 
+}) => (
+  <header className="bg-gradient-to-r from-gray-900 via-slate-900 to-zinc-900 shadow-2xl border-b border-amber-500/30 backdrop-blur-md relative z-50">
+    <div className="container mx-auto px-4 py-4 flex items-center justify-between">
+      <div className="flex items-center space-x-4">
+        <div className="text-2xl md:text-3xl font-bold bg-gradient-to-r from-slate-300 to-purple-400 bg-clip-text text-transparent">
+          SickoScoop
+        </div>
+        <ConnectionStatus apiStatus={apiStatus} />
+        <div className="hidden md:flex space-x-6">
+          <button
+            onClick={() => setCurrentView('feed')}
+            className={`px-4 py-2 rounded-lg border-2 transition-all ${currentView === 'feed' ? 'bg-slate-700 text-white border-amber-500' : 'text-slate-300 hover:text-white border-amber-600/50 hover:border-amber-500'}`}
+          >
+            Feed
+          </button>
+          <button
+            onClick={() => setCurrentView('profile')}
+            className={`px-4 py-2 rounded-lg border-2 transition-all ${currentView === 'profile' ? 'bg-slate-700 text-white border-amber-500' : 'text-slate-300 hover:text-white border-amber-600/50 hover:border-amber-500'}`}
+          >
+            Profile
+          </button>
+          <button
+            onClick={() => setCurrentView('chat')}
+            className={`px-4 py-2 rounded-lg border-2 transition-all ${currentView === 'chat' ? 'bg-slate-700 text-white border-amber-500' : 'text-slate-300 hover:text-white border-amber-600/50 hover:border-amber-500'}`}
+          >
+            Chat
+          </button>
+        </div>
+      </div>
+      
+      <div className="flex items-center space-x-4">
+        <div className="hidden md:block relative">
+          <Search className="absolute left-3 top-3 h-4 w-4 text-slate-500" />
+          <input
+            type="text"
+            placeholder="Search the scoop..."
+            className="pl-10 pr-4 py-2 bg-black/40 border border-slate-600/60 rounded-full text-white placeholder-slate-300 focus:outline-none focus:ring-2 focus:ring-slate-400"
+          />
+        </div>
+        <button className="p-2 text-slate-300 hover:text-white transition-colors">
+          <Settings className="h-6 w-6" />
+        </button>
+        
+        <button
+          onClick={handleLogout}
+          className="px-3 py-2 text-sm rounded-lg transition-all duration-300 shadow-lg hover:scale-105"
+          style={{
+            background: '#ea580c',
+            border: '2px solid #ea580c',
+            color: 'white',
+            fontWeight: 'bold',
+            zIndex: 1000,
+            position: 'relative'
+          }}
+        >
+          Logout
+        </button>
+        <div 
+          className="w-10 h-10 rounded-full flex items-center justify-center font-bold shadow-lg transition-all duration-300 cursor-pointer hover:scale-110"
+          style={{
+            background: 'linear-gradient(45deg, #f59e0b, #d97706)',
+            border: '2px solid #f59e0b',
+            color: 'white',
+            fontWeight: 'bold',
+            zIndex: 1000,
+            position: 'relative'
+          }}
+        >
+          {user?.username?.slice(0, 2).toUpperCase() || 'YU'}
+        </div>
+      </div>
+    </div>
+  </header>
+));
+
+// Move PostCreator outside to prevent re-creation - THIS FIXES THE TYPING ISSUE
+const PostCreator = React.memo(({ 
+  user, 
+  newPost, 
+  setNewPost, 
+  handlePost, 
+  loading, 
+  fileInputRef, 
+  handleFileUpload 
+}) => (
+  <div className="bg-gradient-to-r from-slate-900/60 to-zinc-900/60 backdrop-blur-md rounded-2xl p-6 border border-slate-600/40 mb-6">
+    <div className="flex space-x-4">
+      <div className="w-12 h-12 bg-gradient-to-r from-slate-600 to-zinc-600 rounded-full flex items-center justify-center text-white font-semibold">
+        {user?.username?.slice(0, 2).toUpperCase() || 'YU'}
+      </div>
+      <div className="flex-1">
+        <textarea
+          value={newPost}
+          onChange={(e) => setNewPost(e.target.value)}
+          placeholder="Share your thoughts..."
+          className="w-full p-4 bg-black/40 border border-slate-600/50 rounded-xl text-white placeholder-slate-300 resize-none focus:outline-none focus:ring-2 focus:ring-slate-400"
+          rows="3"
+        />
+        <div className="flex flex-col md:flex-row items-start md:items-center justify-between mt-4 space-y-4 md:space-y-0">
+          <div className="flex flex-wrap gap-2">
+            <button
+              onClick={() => fileInputRef.current?.click()}
+              className="flex items-center space-x-2 px-3 py-2 bg-slate-700/60 rounded-lg text-slate-300 hover:bg-slate-700 transition-colors border-2 border-amber-600/50 hover:border-amber-500 text-sm"
+            >
+              <Image className="h-4 w-4" />
+              <span>Photo</span>
+            </button>
+            <button className="flex items-center space-x-2 px-3 py-2 bg-slate-700/60 rounded-lg text-slate-300 hover:bg-slate-700 transition-colors border-2 border-amber-600/50 hover:border-amber-500 text-sm">
+              <Video className="h-4 w-4" />
+              <span>Video</span>
+            </button>
+            <button className="flex items-center space-x-2 px-3 py-2 bg-slate-700/60 rounded-lg text-slate-300 hover:bg-slate-700 transition-colors border-2 border-amber-600/50 hover:border-amber-500 text-sm">
+              <Mic className="h-4 w-4" />
+              <span>Audio</span>
+            </button>
+            <button className="flex items-center space-x-2 px-3 py-2 bg-slate-700/60 rounded-lg text-slate-300 hover:bg-slate-700 transition-colors border-2 border-amber-600/50 hover:border-amber-500 text-sm">
+              <FileText className="h-4 w-4" />
+              <span>PDF</span>
+            </button>
+          </div>
+          <button
+            onClick={handlePost}
+            disabled={!newPost.trim() || loading}
+            className="px-6 py-2 bg-gradient-to-r from-slate-700 to-zinc-700 text-white rounded-lg hover:scale-105 transform transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed border-2 border-amber-600/70 hover:border-amber-500"
+          >
+            {loading ? 'Posting...' : 'Post Scoop'}
+          </button>
+        </div>
+      </div>
+    </div>
+    <input
+      ref={fileInputRef}
+      type="file"
+      multiple
+      accept="image/*,video/*,audio/*,.pdf"
+      onChange={(e) => handleFileUpload(e.target.files)}
+      className="hidden"
+    />
+  </div>
+));
+
+// Move Post component outside to prevent re-creation
+const Post = React.memo(({ post, user, handleLike, isPublicView = false, onLoginPrompt }) => {
+  const timeAgo = (date) => {
+    const now = new Date();
+    const postDate = new Date(date);
+    const diffInHours = Math.floor((now - postDate) / (1000 * 60 * 60));
+    
+    if (diffInHours < 1) return 'Just now';
+    if (diffInHours < 24) return `${diffInHours}h ago`;
+    return `${Math.floor(diffInHours / 24)}d ago`;
+  };
+
+  return (
+    <div className="bg-gradient-to-r from-slate-900/40 to-zinc-900/40 backdrop-blur-md rounded-2xl p-6 border border-slate-600/30 mb-6 hover:border-slate-500/50 transition-all duration-300">
+      <div className="flex items-start space-x-4">
+        <div className="w-12 h-12 bg-gradient-to-r from-slate-600 to-zinc-600 rounded-full flex items-center justify-center text-white font-semibold text-sm">
+          {post.userId?.username?.slice(0, 2).toUpperCase() || 'UN'}
+        </div>
+        <div className="flex-1">
+          <div className="flex items-center space-x-2 mb-2">
+            <span className="font-semibold text-white">
+              {post.userId?.username || 'Unknown User'}
+            </span>
+            {post.userId?.verified && <span className="text-indigo-400">✓</span>}
+            <span className="text-slate-400 text-sm">
+              {timeAgo(post.createdAt)}
+            </span>
+          </div>
+          <p className="text-slate-200 mb-4 leading-relaxed">{post.content}</p>
+          {post.mediaFiles && post.mediaFiles.length > 0 && (
+            <div className="mb-4">
+              {post.mediaFiles.map((file, idx) => (
+                <div key={idx} className="mb-2">
+                  {file.type === 'image' && (
+                    <img src={file.url} alt="Post media" className="w-full max-w-md rounded-xl" />
+                  )}
+                  {file.type === 'video' && (
+                    <video controls className="w-full max-w-md rounded-xl">
+                      <source src={file.url} />
+                    </video>
+                  )}
+                </div>
+              ))}
+            </div>
+          )}
+          <div className="flex items-center space-x-6 text-slate-400">
+            {isPublicView ? (
+              // Read-only view for non-logged-in users
+              <>
+                <button 
+                  onClick={onLoginPrompt}
+                  className="flex items-center space-x-2 hover:text-red-400 transition-colors group"
+                  title="Sign up to like posts"
+                >
+                  <Heart className="h-5 w-5" fill="none" />
+                  <span>{post.likes?.length || 0}</span>
+                  <span className="text-xs opacity-0 group-hover:opacity-100 transition-opacity">Sign up to like</span>
+                </button>
+                <button 
+                  onClick={onLoginPrompt}
+                  className="flex items-center space-x-2 hover:text-indigo-400 transition-colors group"
+                  title="Sign up to comment"
+                >
+                  <MessageCircle className="h-5 w-5" />
+                  <span>{post.comments?.length || 0}</span>
+                  <span className="text-xs opacity-0 group-hover:opacity-100 transition-opacity">Sign up to comment</span>
+                </button>
+                <button 
+                  onClick={onLoginPrompt}
+                  className="flex items-center space-x-2 hover:text-slate-300 transition-colors group"
+                  title="Sign up to share"
+                >
+                  <Share2 className="h-5 w-5" />
+                  <span>Share</span>
+                  <span className="text-xs opacity-0 group-hover:opacity-100 transition-opacity">Sign up to share</span>
+                </button>
+              </>
+            ) : (
+              // Interactive view for logged-in users
+              <>
+                <button 
+                  onClick={() => handleLike(post._id)}
+                  className={`flex items-center space-x-2 hover:text-red-400 transition-colors ${
+                    post.likes.includes(user?._id || user?.id || 'demo-user') ? 'text-red-400' : ''
+                  }`}
+                >
+                  <Heart className="h-5 w-5" fill={post.likes.includes(user?._id || user?.id || 'demo-user') ? 'currentColor' : 'none'} />
+                  <span>{post.likes?.length || 0}</span>
+                </button>
+                <button className="flex items-center space-x-2 hover:text-indigo-400 transition-colors">
+                  <MessageCircle className="h-5 w-5" />
+                  <span>{post.comments?.length || 0}</span>
+                </button>
+                <button className="flex items-center space-x-2 hover:text-slate-300 transition-colors">
+                  <Share2 className="h-5 w-5" />
+                  <span>Share</span>
+                </button>
+              </>
+            )}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+});
+
+// Move Feed component outside to prevent re-creation
+const Feed = React.memo(({ 
+  user, 
+  newPost, 
+  setNewPost, 
+  handlePost, 
+  loading, 
+  fileInputRef, 
+  handleFileUpload, 
+  posts, 
+  handleLike,
+  feedType,
+  setFeedType,
+  isPublicView = false,
+  onLoginPrompt,
+  onBackToHome
+}) => (
+  <div className="max-w-2xl mx-auto p-6">
+    {/* Public View Header */}
+    {isPublicView && (
+      <div className="mb-6 bg-gradient-to-r from-slate-900/60 to-zinc-900/60 backdrop-blur-md rounded-2xl p-6 border border-slate-600/40">
+        <div className="flex flex-col md:flex-row items-center justify-between space-y-4 md:space-y-0">
+          <div>
+            <h1 className="text-2xl font-bold text-white mb-2">🌍 SickoScoop Public Feed</h1>
+            <p className="text-slate-300">Discover genuine conversations and transparent connections</p>
+          </div>
+          <div className="flex space-x-3">
+            <button
+              onClick={onBackToHome}
+              className="px-4 py-2 bg-gradient-to-r from-slate-700/60 to-zinc-700/60 text-white rounded-lg hover:scale-105 transform transition-all duration-300 border-2 border-slate-500/60 hover:border-slate-400"
+            >
+              ← Back to Home
+            </button>
+            <button
+              onClick={onLoginPrompt}
+              className="px-6 py-2 bg-gradient-to-r from-amber-600 to-orange-600 text-white rounded-lg hover:scale-105 transform transition-all duration-300 border-2 border-amber-500/70 hover:border-amber-400 font-semibold"
+            >
+              Join SickoScoop
+            </button>
+          </div>
+        </div>
+      </div>
+    )}
+
+    {/* Post Creator - Only for logged-in users */}
+    {!isPublicView && (
+      <PostCreator 
+        user={user}
+        newPost={newPost}
+        setNewPost={setNewPost}
+        handlePost={handlePost}
+        loading={loading}
+        fileInputRef={fileInputRef}
+        handleFileUpload={handleFileUpload}
+      />
+    )}
+    
+    {/* Feed Type Toggle - Only for logged-in users */}
+    {!isPublicView && (
+      <div className="mb-6 flex justify-center">
+        <div className="bg-gradient-to-r from-slate-900/60 to-zinc-900/60 backdrop-blur-md rounded-xl p-2 border border-slate-600/40">
+          <div className="flex space-x-1">
+            <button
+              onClick={() => setFeedType('public')}
+              className={`px-6 py-2 rounded-lg transition-all font-medium ${
+                feedType === 'public' 
+                  ? 'bg-gradient-to-r from-slate-700 to-zinc-700 text-white border-2 border-amber-500/70' 
+                  : 'text-slate-300 hover:text-white hover:bg-slate-700/30'
+              }`}
+            >
+              🌍 Public Feed
+            </button>
+            <button
+              onClick={() => setFeedType('personal')}
+              className={`px-6 py-2 rounded-lg transition-all font-medium ${
+                feedType === 'personal' 
+                  ? 'bg-gradient-to-r from-slate-700 to-zinc-700 text-white border-2 border-amber-500/70' 
+                  : 'text-slate-300 hover:text-white hover:bg-slate-700/30'
+              }`}
+            >
+              👤 My Feed
+            </button>
+          </div>
+        </div>
+      </div>
+    )}
+
+    {/* Call to action for public viewers */}
+    {isPublicView && (
+      <div className="mb-6 bg-gradient-to-r from-amber-900/20 to-orange-900/20 backdrop-blur-md rounded-xl p-4 border border-amber-500/30">
+        <div className="text-center">
+          <p className="text-amber-200 mb-3">
+            <span className="font-semibold">Like what you see?</span> Join SickoScoop to interact with posts, share your thoughts, and connect with our community!
+          </p>
+          <button
+            onClick={onLoginPrompt}
+            className="px-6 py-2 bg-gradient-to-r from-amber-600 to-orange-600 text-white rounded-lg hover:scale-105 transform transition-all duration-300 border-2 border-amber-500/70 hover:border-amber-400 font-semibold"
+          >
+            Sign Up Now
+          </button>
+        </div>
+      </div>
+    )}
+
+    {/* Feed Content */}
+    {posts.length === 0 ? (
+      <div className="text-center text-slate-400 py-8">
+        <div className="mb-4">
+          {isPublicView ? '🌍' : (feedType === 'public' ? '🌍' : '👤')}
+        </div>
+        <p>
+          {isPublicView 
+            ? 'Loading public posts...' 
+            : feedType === 'public' 
+              ? 'Loading public posts...' 
+              : 'Loading your personalized feed...'}
+        </p>
+        <p className="text-sm mt-2 text-slate-500">
+          {isPublicView 
+            ? 'Discover conversations from the SickoScoop community' 
+            : feedType === 'public' 
+              ? 'See what everyone is sharing on SickoScoop' 
+              : 'Posts from people you follow and your own posts'}
+        </p>
+      </div>
+    ) : (
+      <>
+        <div className="text-center mb-4">
+          <p className="text-slate-400 text-sm">
+            {isPublicView 
+              ? `🌍 Public Feed • ${posts.length} posts from the community` 
+              : feedType === 'public' 
+                ? `🌍 Public Feed • ${posts.length} posts from the community` 
+                : `👤 Your Feed • ${posts.length} personalized posts`}
+          </p>
+        </div>
+        {posts.map(post => (
+          <Post 
+            key={post._id} 
+            post={post} 
+            user={user} 
+            handleLike={handleLike} 
+            isPublicView={isPublicView}
+            onLoginPrompt={onLoginPrompt}
+          />
+        ))}
+      </>
+    )}
+
+    {/* Bottom CTA for public viewers */}
+    {isPublicView && posts.length > 0 && (
+      <div className="mt-8 text-center bg-gradient-to-r from-slate-900/40 to-zinc-900/40 backdrop-blur-md rounded-xl p-6 border border-slate-600/30">
+        <h3 className="text-xl font-semibold text-white mb-2">Ready to join the conversation?</h3>
+        <p className="text-slate-300 mb-4">Create your account to post, like, comment, and connect with the SickoScoop community.</p>
+        <button
+          onClick={onLoginPrompt}
+          className="px-8 py-3 bg-gradient-to-r from-amber-600 to-orange-600 text-white text-lg font-semibold rounded-lg hover:scale-105 transform transition-all duration-300 border-2 border-amber-500/70 hover:border-amber-400"
+        >
+          Join SickoScoop Today
+        </button>
+      </div>
+    )}
+  </div>
+));
+
+// Move Profile component outside to prevent re-creation
+const Profile = React.memo(({ user, posts }) => (
+  <div className="max-w-4xl mx-auto p-6">
+    <div className="bg-gradient-to-r from-slate-900/60 to-zinc-900/60 backdrop-blur-md rounded-2xl p-8 border border-slate-600/40 mb-6">
+      <div className="flex flex-col md:flex-row items-center md:items-start space-y-4 md:space-y-0 md:space-x-6 mb-6">
+        <div className="w-24 h-24 bg-gradient-to-r from-slate-600 to-zinc-600 rounded-full flex items-center justify-center text-white text-2xl font-semibold">
+          {user?.username?.slice(0, 2).toUpperCase() || 'YU'}
+        </div>
+        <div className="text-center md:text-left">
+          <h1 className="text-3xl font-bold text-white mb-2">{user?.username || 'Your Profile'}</h1>
+          <p className="text-slate-300 mb-4">Authentic • Transparent • Genuine</p>
+          <div className="flex justify-center md:justify-start space-x-4 text-sm text-slate-400">
+            <span>{user?.followers?.length || 127} Followers</span>
+            <span>{user?.following?.length || 89} Following</span>
+            <span>{posts.filter(p => p.userId?.username === user?.username).length || posts.length} Posts</span>
+          </div>
+        </div>
+      </div>
+      <div className="border-t border-slate-600/40 pt-6">
+        <h2 className="text-xl font-semibold text-white mb-4">About</h2>
+        <p className="text-slate-200 leading-relaxed">
+          {user?.bio || 'Passionate about genuine connections and transparent communication. Fighting against digital stalking and promoting authentic social interactions. Committed to sophisticated, meaningful discourse.'}
+        </p>
+      </div>
+    </div>
+    
+    <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+      <div className="bg-gradient-to-r from-slate-900/40 to-zinc-900/40 backdrop-blur-md rounded-xl p-6 border border-slate-600/30">
+        <h3 className="text-lg font-semibold text-white mb-3">Privacy Score</h3>
+        <div className="text-3xl font-bold text-indigo-400 mb-2">{user?.privacyScore || 94}%</div>
+        <p className="text-slate-400 text-sm">Excellent protection</p>
+      </div>
+      <div className="bg-gradient-to-r from-slate-900/40 to-zinc-900/40 backdrop-blur-md rounded-xl p-6 border border-slate-600/30">
+        <h3 className="text-lg font-semibold text-white mb-3">Transparency</h3>
+        <div className="text-3xl font-bold text-slate-400 mb-2">{user?.transparencyScore || 98}%</div>
+        <p className="text-slate-400 text-sm">Highly authentic</p>
+      </div>
+      <div className="bg-gradient-to-r from-slate-900/40 to-zinc-900/40 backdrop-blur-md rounded-xl p-6 border border-slate-600/30">
+        <h3 className="text-lg font-semibold text-white mb-3">Community</h3>
+        <div className="text-3xl font-bold text-purple-400 mb-2">{user?.communityScore || 96}%</div>
+        <p className="text-slate-400 text-sm">Great connections</p>
+      </div>
+    </div>
+  </div>
+));
+
+// Move Chat component outside to prevent re-creation
+const Chat = React.memo(({ 
+  chats, 
+  selectedChat, 
+  setSelectedChat, 
+  chatMessage, 
+  setChatMessage, 
+  handleSendMessage 
+}) => (
+  <div className="max-w-6xl mx-auto p-6 flex flex-col lg:flex-row space-y-6 lg:space-y-0 lg:space-x-6 h-[calc(100vh-200px)]">
+    {/* Chat List */}
+    <div className="w-full lg:w-1/3 bg-gradient-to-r from-slate-900/60 to-zinc-900/60 backdrop-blur-md rounded-2xl border border-slate-600/40 overflow-hidden">
+      <div className="p-6 border-b border-slate-600/40">
+        <h2 className="text-xl font-semibold text-white mb-4">Messages</h2>
+        <div className="relative">
+          <Search className="absolute left-3 top-3 h-4 w-4 text-slate-500" />
+          <input
+            type="text"
+            placeholder="Search conversations..."
+            className="w-full pl-10 pr-4 py-2 bg-black/40 border border-slate-600/50 rounded-full text-white placeholder-slate-300 focus:outline-none focus:ring-2 focus:ring-slate-400"
+          />
+        </div>
+      </div>
+      <div className="overflow-y-auto max-h-96 lg:max-h-full">
+        {chats.length === 0 ? (
+          <div className="p-4 text-center text-slate-400">
+            <p>No conversations yet</p>
+          </div>
+        ) : (
+          chats.map(chat => (
+            <button
+              key={chat._id}
+              onClick={() => setSelectedChat(chat)}
+              className={`w-full p-4 text-left hover:bg-slate-700/30 transition-colors border-b border-slate-600/20 ${
+                selectedChat?._id === chat._id ? 'bg-slate-700/40' : ''
+              }`}
+            >
+              <div className="flex items-center space-x-3">
+                <div className="relative">
+                  <div className="w-12 h-12 bg-gradient-to-r from-slate-600 to-zinc-600 rounded-full flex items-center justify-center text-white font-semibold text-sm">
+                    {chat.participants?.[0]?.username?.slice(0, 2).toUpperCase() || 'UN'}
+                  </div>
+                  {chat.isOnline && (
+                    <div className="absolute -bottom-1 -right-1 w-4 h-4 bg-green-500 rounded-full border-2 border-slate-900"></div>
+                  )}
+                </div>
+                <div className="flex-1 min-w-0">
+                  <div className="font-semibold text-white">
+                    {chat.participants?.[0]?.username || 'Unknown User'}
+                  </div>
+                  <div className="text-sm text-slate-400 truncate">
+                    {chat.lastMessage?.content || 'No messages yet'}
+                  </div>
+                </div>
+              </div>
+            </button>
+          ))
+        )}
+      </div>
+    </div>
+
+    {/* Chat Window */}
+    <div className="flex-1 bg-gradient-to-r from-slate-900/40 to-zinc-900/40 backdrop-blur-md rounded-2xl border border-slate-600/30 flex flex-col min-h-96">
+      {selectedChat ? (
+        <>
+          <div className="p-6 border-b border-slate-600/40 flex items-center space-x-4">
+            <div className="w-10 h-10 bg-gradient-to-r from-slate-600 to-zinc-600 rounded-full flex items-center justify-center text-white font-semibold text-sm">
+              {selectedChat.participants?.[0]?.username?.slice(0, 2).toUpperCase() || 'UN'}
+            </div>
+            <div>
+              <div className="font-semibold text-white">
+                {selectedChat.participants?.[0]?.username || 'Unknown User'}
+              </div>
+              <div className={`text-sm ${selectedChat.isOnline ? 'text-green-400' : 'text-slate-400'}`}>
+                {selectedChat.isOnline ? 'Online' : 'Offline'}
+              </div>
+            </div>
+          </div>
+          
+          <div className="flex-1 p-6 overflow-y-auto">
+            <div className="space-y-4">
+              <div className="flex justify-start">
+                <div className="bg-slate-700/60 rounded-2xl rounded-bl-md px-4 py-2 max-w-xs">
+                  <p className="text-white">{selectedChat.lastMessage?.content}</p>
+                </div>
+              </div>
+              <div className="flex justify-end">
+                <div className="bg-zinc-700/60 rounded-2xl rounded-br-md px-4 py-2 max-w-xs">
+                  <p className="text-white">Thanks! Transparency is key 🔑</p>
+                </div>
+              </div>
+              <div className="flex justify-start">
+                <div className="bg-slate-700/60 rounded-2xl rounded-bl-md px-4 py-2 max-w-xs">
+                  <p className="text-white">Absolutely! The anti-stalker features are game-changing</p>
+                </div>
+              </div>
+            </div>
+          </div>
+          
+          <div className="p-6 border-t border-slate-600/40">
+            <div className="flex space-x-4">
+              <input
+                type="text"
+                value={chatMessage}
+                onChange={(e) => setChatMessage(e.target.value)}
+                onKeyPress={(e) => e.key === 'Enter' && handleSendMessage()}
+                placeholder="Send a transparent message..."
+                className="flex-1 p-3 bg-black/40 border border-slate-600/50 rounded-full text-white placeholder-slate-300 focus:outline-none focus:ring-2 focus:ring-slate-400"
+              />
+              <button
+                onClick={handleSendMessage}
+                className="p-3 bg-gradient-to-r from-slate-700 to-zinc-700 text-white rounded-lg hover:scale-105 transform transition-all duration-300 border-2 border-amber-600/70 hover:border-amber-500"
+              >
+                <Send className="h-5 w-5" />
+              </button>
+            </div>
+          </div>
+        </>
+      ) : (
+        <div className="flex-1 flex items-center justify-center">
+          <div className="text-center text-slate-400">
+            <MessageCircle className="h-16 w-16 mx-auto mb-4 opacity-50" />
+            <p className="text-xl">Select a conversation to start chatting</p>
+          </div>
+        </div>
+      )}
+    </div>
+  </div>
+));
+
 const SickoScoopApp = () => {
   const [currentView, setCurrentView] = useState('landing');
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [user, setUser] = useState(null);
   const [token, setToken] = useState(null);
   const [posts, setPosts] = useState([]);
+  const [allPosts, setAllPosts] = useState([]); // Store all posts for public feed
   const [newPost, setNewPost] = useState('');
   const [selectedChat, setSelectedChat] = useState(null);
   const [chatMessage, setChatMessage] = useState('');
@@ -211,6 +831,8 @@ const SickoScoopApp = () => {
   const [showRegister, setShowRegister] = useState(false);
   const [isClient, setIsClient] = useState(false);
   const [apiStatus, setApiStatus] = useState('unknown'); // 'connected', 'disconnected', 'unknown'
+  const [feedType, setFeedType] = useState('public'); // 'public' or 'personal'
+  const [isPublicBrowsing, setIsPublicBrowsing] = useState(false); // New state for public browsing
   const fileInputRef = useRef(null);
 
   // Fix hydration issues by ensuring client-side only operations
@@ -396,9 +1018,9 @@ const SickoScoopApp = () => {
     const mockPosts = [
       {
         _id: '1',
-        userId: { username: 'Aurora Dreams', verified: true },
+        userId: { username: 'Aurora Dreams', verified: true, _id: 'user1' },
         content: 'Embracing transparency in our digital connections. This platform truly feels different! 🌟',
-        likes: ['user1', 'user2', 'user3'],
+        likes: ['user2', 'user3', 'user4'],
         comments: [
           { user: 'Digital Phoenix', content: 'Absolutely love this approach!' }
         ],
@@ -406,24 +1028,74 @@ const SickoScoopApp = () => {
       },
       {
         _id: '2', 
-        userId: { username: 'Digital Phoenix', verified: false },
+        userId: { username: 'Digital Phoenix', verified: false, _id: 'user2' },
         content: 'Finally found a platform where genuine conversation thrives! The sophisticated design here creates the perfect atmosphere for authentic dialogue. 💫',
-        likes: ['user1', 'user2'],
+        likes: ['user1', 'user3'],
         comments: [],
         createdAt: new Date(Date.now() - 4 * 60 * 60 * 1000)
       },
       {
         _id: '3',
-        userId: { username: 'Cosmic Wanderer', verified: true },
+        userId: { username: 'Cosmic Wanderer', verified: true, _id: 'user3' },
         content: 'The anti-stalker protection here is revolutionary. Finally, a safe space for real connections! 🛡️',
-        likes: ['user1', 'user2', 'user3', 'user4'],
+        likes: ['user1', 'user2', 'user4', 'user5'],
         comments: [
           { user: 'Aurora Dreams', content: 'Privacy is everything!' }
         ],
         createdAt: new Date(Date.now() - 6 * 60 * 60 * 1000)
+      },
+      {
+        _id: '4',
+        userId: { username: 'Tech Sage', verified: true, _id: 'user4' },
+        content: 'Just shared my thoughts on digital privacy in 2025. The landscape is evolving rapidly, and platforms like this are leading the charge! 🚀',
+        likes: ['user1', 'user3'],
+        comments: [],
+        createdAt: new Date(Date.now() - 8 * 60 * 60 * 1000)
+      },
+      {
+        _id: '5',
+        userId: { username: 'Privacy Advocate', verified: false, _id: 'user5' },
+        content: 'Love how this platform puts user safety first. No more worrying about unwanted attention or harassment. This is the future of social media! 💪',
+        likes: ['user1', 'user2', 'user3'],
+        comments: [
+          { user: 'Aurora Dreams', content: 'Couldn\'t agree more!' },
+          { user: 'Tech Sage', content: 'Safety should always be priority #1' }
+        ],
+        createdAt: new Date(Date.now() - 10 * 60 * 60 * 1000)
+      },
+      {
+        _id: '6',
+        userId: { username: 'Transparency Truth', verified: true, _id: 'user6' },
+        content: 'Been testing this platform for weeks. The commitment to genuine discourse without anonymity trolls is refreshing. Quality over quantity! ✨',
+        likes: ['user2', 'user4', 'user5'],
+        comments: [],
+        createdAt: new Date(Date.now() - 12 * 60 * 60 * 1000)
+      },
+      {
+        _id: '7',
+        userId: { username: 'Social Pioneer', verified: false, _id: 'user7' },
+        content: 'The verification system here strikes the perfect balance. You know who you\'re talking to, but privacy is still protected. Ingenious design! 🎯',
+        likes: ['user1', 'user3', 'user6'],
+        comments: [
+          { user: 'Digital Phoenix', content: 'The verification process was so smooth!' }
+        ],
+        createdAt: new Date(Date.now() - 14 * 60 * 60 * 1000)
+      },
+      {
+        _id: '8',
+        userId: { username: 'Community Builder', verified: true, _id: 'user8' },
+        content: 'Hosting my first SickoScoop community event next week! Who\'s interested in joining a discussion about ethical social media? 🤝',
+        likes: ['user2', 'user5', 'user7'],
+        comments: [
+          { user: 'Privacy Advocate', content: 'Count me in!' },
+          { user: 'Tech Sage', content: 'This sounds amazing!' }
+        ],
+        createdAt: new Date(Date.now() - 16 * 60 * 60 * 1000)
       }
     ];
-    setPosts(mockPosts);
+    
+    setAllPosts(mockPosts);
+    updateDisplayedPosts(mockPosts, feedType, user);
 
     const mockChats = [
       {
@@ -448,8 +1120,60 @@ const SickoScoopApp = () => {
     setChats(mockChats);
   };
 
+  // Helper function to update displayed posts based on feed type
+  const updateDisplayedPosts = (allPostsData, currentFeedType, currentUser) => {
+    if (currentFeedType === 'public') {
+      // Show all posts for public feed
+      setPosts(allPostsData);
+    } else {
+      // Show only user's posts and posts from followed users for personal feed
+      // For demo, we'll show user's posts + a few select posts
+      const userPosts = allPostsData.filter(post => 
+        post.userId?._id === currentUser?._id || 
+        post.userId?.username === currentUser?.username
+      );
+      
+      // Add some "followed" users' posts for demo
+      const followedPosts = allPostsData.filter(post => 
+        ['Aurora Dreams', 'Tech Sage', 'Privacy Advocate'].includes(post.userId?.username)
+      ).slice(0, 3);
+      
+      const personalFeedPosts = [...userPosts, ...followedPosts]
+        .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+      
+      setPosts(personalFeedPosts);
+    }
+  };
+
+  // Update posts when feed type changes
+  useEffect(() => {
+    if (allPosts.length > 0) {
+      updateDisplayedPosts(allPosts, feedType, user);
+    }
+  }, [feedType, allPosts, user]);
+
   const loadPosts = async (authToken = null) => {
     try {
+      // Try to load from public feed endpoint first
+      const publicResponse = await apiCall('/posts/public', {}, authToken);
+      let publicPostsData = [];
+      
+      if (Array.isArray(publicResponse)) {
+        publicPostsData = publicResponse;
+      } else if (publicResponse.posts && Array.isArray(publicResponse.posts)) {
+        publicPostsData = publicResponse.posts;
+      } else if (publicResponse.data && Array.isArray(publicResponse.data)) {
+        publicPostsData = publicResponse.data;
+      }
+      
+      if (publicPostsData.length > 0) {
+        setAllPosts(publicPostsData);
+        updateDisplayedPosts(publicPostsData, feedType, user);
+        setApiStatus('connected');
+        return;
+      }
+
+      // Fallback to regular posts endpoint
       const response = await apiCall('/posts', {}, authToken);
       let postsData = [];
       
@@ -462,7 +1186,8 @@ const SickoScoopApp = () => {
       }
       
       if (postsData.length > 0) {
-        setPosts(postsData);
+        setAllPosts(postsData);
+        updateDisplayedPosts(postsData, feedType, user);
         setApiStatus('connected');
       }
     } catch (error) {
@@ -670,11 +1395,14 @@ const handleLogin = async () => {
     setToken(null);
     setUser(null);
     setIsLoggedIn(false);
+    setIsPublicBrowsing(false); // Reset public browsing state
     setCurrentView('landing');
     setApiStatus('unknown');
     setPosts([]);
+    setAllPosts([]);
     setChats([]);
     setError('');
+    setFeedType('public'); // Reset to public feed
     
     // Reload mock data for demo
     setTimeout(() => {
@@ -686,6 +1414,21 @@ const handleLogin = async () => {
     if (!newPost.trim()) return;
     
     setLoading(true);
+    
+    // Create the new post data structure
+    const newPostData = {
+      _id: Date.now().toString(),
+      userId: { 
+        username: user?.username || 'You', 
+        verified: true,
+        _id: user?._id || 'demo-user'
+      },
+      content: newPost,
+      likes: [],
+      comments: [],
+      createdAt: new Date()
+    };
+
     try {
       if (apiStatus === 'connected' && token !== 'demo-token') {
         const response = await apiCall('/posts', {
@@ -694,26 +1437,17 @@ const handleLogin = async () => {
         }, token);
 
         if (response._id || response.id) {
-          setPosts([response, ...posts]);
+          const updatedAllPosts = [response, ...allPosts];
+          setAllPosts(updatedAllPosts);
+          updateDisplayedPosts(updatedAllPosts, feedType, user);
         } else {
           throw new Error('Invalid post response');
         }
       } else {
-        // Mock post creation
-        const newPostData = {
-          _id: Date.now().toString(),
-          userId: { 
-            username: user?.username || 'You', 
-            verified: true,
-            _id: user?._id || 'demo-user'
-          },
-          content: newPost,
-          likes: [],
-          comments: [],
-          createdAt: new Date()
-        };
-
-        setPosts([newPostData, ...posts]);
+        // Mock post creation - add to allPosts and update displayed posts
+        const updatedAllPosts = [newPostData, ...allPosts];
+        setAllPosts(updatedAllPosts);
+        updateDisplayedPosts(updatedAllPosts, feedType, user);
       }
       
       setNewPost('');
@@ -721,20 +1455,9 @@ const handleLogin = async () => {
       console.error('Post error:', error);
       
       // Still create post locally as fallback
-      const newPostData = {
-        _id: Date.now().toString(),
-        userId: { 
-          username: user?.username || 'You', 
-          verified: true,
-          _id: user?._id || 'demo-user'
-        },
-        content: newPost,
-        likes: [],
-        comments: [],
-        createdAt: new Date()
-      };
-
-      setPosts([newPostData, ...posts]);
+      const updatedAllPosts = [newPostData, ...allPosts];
+      setAllPosts(updatedAllPosts);
+      updateDisplayedPosts(updatedAllPosts, feedType, user);
       setNewPost('');
     } finally {
       setLoading(false);
@@ -744,19 +1467,27 @@ const handleLogin = async () => {
   const handleLike = async (postId) => {
     const userId = user?._id || user?.id || 'demo-user';
     
-    // Update UI optimistically first
-    setPosts(posts.map(post => {
-      if (post._id === postId) {
-        const hasLiked = post.likes.includes(userId);
-        return {
-          ...post,
-          likes: hasLiked 
-            ? post.likes.filter(id => id !== userId)
-            : [...post.likes, userId]
-        };
-      }
-      return post;
-    }));
+    // Update UI optimistically first - update both allPosts and displayed posts
+    const updatePostLikes = (postsArray) => {
+      return postsArray.map(post => {
+        if (post._id === postId) {
+          const hasLiked = post.likes.includes(userId);
+          return {
+            ...post,
+            likes: hasLiked 
+              ? post.likes.filter(id => id !== userId)
+              : [...post.likes, userId]
+          };
+        }
+        return post;
+      });
+    };
+
+    const updatedAllPosts = updatePostLikes(allPosts);
+    const updatedDisplayedPosts = updatePostLikes(posts);
+    
+    setAllPosts(updatedAllPosts);
+    setPosts(updatedDisplayedPosts);
 
     // Try to sync with backend
     if (apiStatus === 'connected' && token !== 'demo-token') {
@@ -767,18 +1498,23 @@ const handleLogin = async () => {
       } catch (error) {
         console.error('Like error:', error);
         // Revert optimistic update on error
-        setPosts(posts.map(post => {
-          if (post._id === postId) {
-            const hasLiked = post.likes.includes(userId);
-            return {
-              ...post,
-              likes: hasLiked 
-                ? [...post.likes, userId]
-                : post.likes.filter(id => id !== userId)
-            };
-          }
-          return post;
-        }));
+        const revertPostLikes = (postsArray) => {
+          return postsArray.map(post => {
+            if (post._id === postId) {
+              const hasLiked = post.likes.includes(userId);
+              return {
+                ...post,
+                likes: hasLiked 
+                  ? [...post.likes, userId]
+                  : post.likes.filter(id => id !== userId)
+              };
+            }
+            return post;
+          });
+        };
+
+        setAllPosts(revertPostLikes(updatedAllPosts));
+        setPosts(revertPostLikes(updatedDisplayedPosts));
       }
     }
   };
@@ -796,408 +1532,66 @@ const handleLogin = async () => {
     setChatMessage('');
   };
 
-  // Connection status indicator
-  const ConnectionStatus = () => (
-    <div className={`text-xs px-2 py-1 rounded-full ${
-      apiStatus === 'connected' 
-        ? 'bg-green-500/20 text-green-400' 
-        : apiStatus === 'disconnected'
-        ? 'bg-red-500/20 text-red-400'
-        : 'bg-yellow-500/20 text-yellow-400'
-    }`}>
-      {apiStatus === 'connected' ? '● Connected' : 
-       apiStatus === 'disconnected' ? '● Demo Mode' : '● Checking...'}
-    </div>
-  );
-
-  const Header = () => (
-    <header className="bg-gradient-to-r from-gray-900 via-slate-900 to-zinc-900 shadow-2xl border-b border-amber-500/30 backdrop-blur-md relative z-50">
-      <div className="container mx-auto px-4 py-4 flex items-center justify-between">
-        <div className="flex items-center space-x-4">
-          <div className="text-2xl md:text-3xl font-bold bg-gradient-to-r from-slate-300 to-purple-400 bg-clip-text text-transparent">
-            SickoScoop
-          </div>
-          <ConnectionStatus />
-          <div className="hidden md:flex space-x-6">
-            <button
-              onClick={() => setCurrentView('feed')}
-              className={`px-4 py-2 rounded-lg border-2 transition-all ${currentView === 'feed' ? 'bg-slate-700 text-white border-amber-500' : 'text-slate-300 hover:text-white border-amber-600/50 hover:border-amber-500'}`}
-            >
-              Feed
-            </button>
-            <button
-              onClick={() => setCurrentView('profile')}
-              className={`px-4 py-2 rounded-lg border-2 transition-all ${currentView === 'profile' ? 'bg-slate-700 text-white border-amber-500' : 'text-slate-300 hover:text-white border-amber-600/50 hover:border-amber-500'}`}
-            >
-              Profile
-            </button>
-            <button
-              onClick={() => setCurrentView('chat')}
-              className={`px-4 py-2 rounded-lg border-2 transition-all ${currentView === 'chat' ? 'bg-slate-700 text-white border-amber-500' : 'text-slate-300 hover:text-white border-amber-600/50 hover:border-amber-500'}`}
-            >
-              Chat
-            </button>
-          </div>
-        </div>
-        
-        <div className="flex items-center space-x-4">
-          <div className="hidden md:block relative">
-            <Search className="absolute left-3 top-3 h-4 w-4 text-slate-500" />
-            <input
-              type="text"
-              placeholder="Search the scoop..."
-              className="pl-10 pr-4 py-2 bg-black/40 border border-slate-600/60 rounded-full text-white placeholder-slate-300 focus:outline-none focus:ring-2 focus:ring-slate-400"
-            />
-          </div>
-          <button className="p-2 text-slate-300 hover:text-white transition-colors">
-            <Settings className="h-6 w-6" />
-          </button>
-          
-          <button
-            onClick={handleLogout}
-            className="px-3 py-2 text-sm rounded-lg transition-all duration-300 shadow-lg hover:scale-105"
-            style={{
-              background: '#ea580c',
-              border: '2px solid #ea580c',
-              color: 'white',
-              fontWeight: 'bold',
-              zIndex: 1000,
-              position: 'relative'
-            }}
-          >
-            Logout
-          </button>
-          <div 
-            className="w-10 h-10 rounded-full flex items-center justify-center font-bold shadow-lg transition-all duration-300 cursor-pointer hover:scale-110"
-            style={{
-              background: 'linear-gradient(45deg, #f59e0b, #d97706)',
-              border: '2px solid #f59e0b',
-              color: 'white',
-              fontWeight: 'bold',
-              zIndex: 1000,
-              position: 'relative'
-            }}
-          >
-            {user?.username?.slice(0, 2).toUpperCase() || 'YU'}
-          </div>
-        </div>
-      </div>
-    </header>
-  );
-
-  const PostCreator = () => (
-    <div className="bg-gradient-to-r from-slate-900/60 to-zinc-900/60 backdrop-blur-md rounded-2xl p-6 border border-slate-600/40 mb-6">
-      <div className="flex space-x-4">
-        <div className="w-12 h-12 bg-gradient-to-r from-slate-600 to-zinc-600 rounded-full flex items-center justify-center text-white font-semibold">
-          {user?.username?.slice(0, 2).toUpperCase() || 'YU'}
-        </div>
-        <div className="flex-1">
-          <textarea
-            value={newPost}
-            onChange={(e) => setNewPost(e.target.value)}
-            placeholder="Share your thoughts..."
-            className="w-full p-4 bg-black/40 border border-slate-600/50 rounded-xl text-white placeholder-slate-300 resize-none focus:outline-none focus:ring-2 focus:ring-slate-400"
-            rows="3"
-          />
-          <div className="flex flex-col md:flex-row items-start md:items-center justify-between mt-4 space-y-4 md:space-y-0">
-            <div className="flex flex-wrap gap-2">
-              <button
-                onClick={() => fileInputRef.current?.click()}
-                className="flex items-center space-x-2 px-3 py-2 bg-slate-700/60 rounded-lg text-slate-300 hover:bg-slate-700 transition-colors border-2 border-amber-600/50 hover:border-amber-500 text-sm"
-              >
-                <Image className="h-4 w-4" />
-                <span>Photo</span>
-              </button>
-              <button className="flex items-center space-x-2 px-3 py-2 bg-slate-700/60 rounded-lg text-slate-300 hover:bg-slate-700 transition-colors border-2 border-amber-600/50 hover:border-amber-500 text-sm">
-                <Video className="h-4 w-4" />
-                <span>Video</span>
-              </button>
-              <button className="flex items-center space-x-2 px-3 py-2 bg-slate-700/60 rounded-lg text-slate-300 hover:bg-slate-700 transition-colors border-2 border-amber-600/50 hover:border-amber-500 text-sm">
-                <Mic className="h-4 w-4" />
-                <span>Audio</span>
-              </button>
-              <button className="flex items-center space-x-2 px-3 py-2 bg-slate-700/60 rounded-lg text-slate-300 hover:bg-slate-700 transition-colors border-2 border-amber-600/50 hover:border-amber-500 text-sm">
-                <FileText className="h-4 w-4" />
-                <span>PDF</span>
-              </button>
-            </div>
-            <button
-              onClick={handlePost}
-              disabled={!newPost.trim() || loading}
-              className="px-6 py-2 bg-gradient-to-r from-slate-700 to-zinc-700 text-white rounded-lg hover:scale-105 transform transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed border-2 border-amber-600/70 hover:border-amber-500"
-            >
-              {loading ? 'Posting...' : 'Post Scoop'}
-            </button>
-          </div>
-        </div>
-      </div>
-      <input
-        ref={fileInputRef}
-        type="file"
-        multiple
-        accept="image/*,video/*,audio/*,.pdf"
-        onChange={(e) => handleFileUpload(e.target.files)}
-        className="hidden"
-      />
-    </div>
-  );
-
-  const Post = ({ post }) => {
-    const timeAgo = (date) => {
-      const now = new Date();
-      const postDate = new Date(date);
-      const diffInHours = Math.floor((now - postDate) / (1000 * 60 * 60));
-      
-      if (diffInHours < 1) return 'Just now';
-      if (diffInHours < 24) return `${diffInHours}h ago`;
-      return `${Math.floor(diffInHours / 24)}d ago`;
-    };
-
-    return (
-      <div className="bg-gradient-to-r from-slate-900/40 to-zinc-900/40 backdrop-blur-md rounded-2xl p-6 border border-slate-600/30 mb-6 hover:border-slate-500/50 transition-all duration-300">
-        <div className="flex items-start space-x-4">
-          <div className="w-12 h-12 bg-gradient-to-r from-slate-600 to-zinc-600 rounded-full flex items-center justify-center text-white font-semibold text-sm">
-            {post.userId?.username?.slice(0, 2).toUpperCase() || 'UN'}
-          </div>
-          <div className="flex-1">
-            <div className="flex items-center space-x-2 mb-2">
-              <span className="font-semibold text-white">
-                {post.userId?.username || 'Unknown User'}
-              </span>
-              {post.userId?.verified && <span className="text-indigo-400">✓</span>}
-              <span className="text-slate-400 text-sm">
-                {timeAgo(post.createdAt)}
-              </span>
-            </div>
-            <p className="text-slate-200 mb-4 leading-relaxed">{post.content}</p>
-            {post.mediaFiles && post.mediaFiles.length > 0 && (
-              <div className="mb-4">
-                {post.mediaFiles.map((file, idx) => (
-                  <div key={idx} className="mb-2">
-                    {file.type === 'image' && (
-                      <img src={file.url} alt="Post media" className="w-full max-w-md rounded-xl" />
-                    )}
-                    {file.type === 'video' && (
-                      <video controls className="w-full max-w-md rounded-xl">
-                        <source src={file.url} />
-                      </video>
-                    )}
-                  </div>
-                ))}
-              </div>
-            )}
-            <div className="flex items-center space-x-6 text-slate-400">
-              <button 
-                onClick={() => handleLike(post._id)}
-                className={`flex items-center space-x-2 hover:text-red-400 transition-colors ${
-                  post.likes.includes(user?._id || user?.id || 'demo-user') ? 'text-red-400' : ''
-                }`}
-              >
-                <Heart className="h-5 w-5" fill={post.likes.includes(user?._id || user?.id || 'demo-user') ? 'currentColor' : 'none'} />
-                <span>{post.likes?.length || 0}</span>
-              </button>
-              <button className="flex items-center space-x-2 hover:text-indigo-400 transition-colors">
-                <MessageCircle className="h-5 w-5" />
-                <span>{post.comments?.length || 0}</span>
-              </button>
-              <button className="flex items-center space-x-2 hover:text-slate-300 transition-colors">
-                <Share2 className="h-5 w-5" />
-                <span>Share</span>
-              </button>
-            </div>
-          </div>
-        </div>
-      </div>
-    );
+  // Handle public browsing
+  const handleBrowsePublic = () => {
+    setIsPublicBrowsing(true);
+    setCurrentView('publicFeed');
+    // Load mock data for public browsing
+    loadMockData();
   };
 
-  const Feed = () => (
-    <div className="max-w-2xl mx-auto p-6">
-      <PostCreator />
-      {posts.length === 0 ? (
-        <div className="text-center text-slate-400 py-8">
-          <p>Loading posts...</p>
-        </div>
-      ) : (
-        posts.map(post => (
-          <Post key={post._id} post={post} />
-        ))
-      )}
-    </div>
-  );
+  // Handle login prompt from public view
+  const handleLoginPrompt = () => {
+    setIsPublicBrowsing(false);
+    setCurrentView('landing');
+    setShowRegister(false);
+  };
 
-  const Profile = () => (
-    <div className="max-w-4xl mx-auto p-6">
-      <div className="bg-gradient-to-r from-slate-900/60 to-zinc-900/60 backdrop-blur-md rounded-2xl p-8 border border-slate-600/40 mb-6">
-        <div className="flex flex-col md:flex-row items-center md:items-start space-y-4 md:space-y-0 md:space-x-6 mb-6">
-          <div className="w-24 h-24 bg-gradient-to-r from-slate-600 to-zinc-600 rounded-full flex items-center justify-center text-white text-2xl font-semibold">
-            {user?.username?.slice(0, 2).toUpperCase() || 'YU'}
-          </div>
-          <div className="text-center md:text-left">
-            <h1 className="text-3xl font-bold text-white mb-2">{user?.username || 'Your Profile'}</h1>
-            <p className="text-slate-300 mb-4">Authentic • Transparent • Genuine</p>
-            <div className="flex justify-center md:justify-start space-x-4 text-sm text-slate-400">
-              <span>{user?.followers?.length || 127} Followers</span>
-              <span>{user?.following?.length || 89} Following</span>
-              <span>{posts.filter(p => p.userId?.username === user?.username).length || posts.length} Posts</span>
-            </div>
-          </div>
-        </div>
-        <div className="border-t border-slate-600/40 pt-6">
-          <h2 className="text-xl font-semibold text-white mb-4">About</h2>
-          <p className="text-slate-200 leading-relaxed">
-            {user?.bio || 'Passionate about genuine connections and transparent communication. Fighting against digital stalking and promoting authentic social interactions. Committed to sophisticated, meaningful discourse.'}
-          </p>
-        </div>
-      </div>
-      
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        <div className="bg-gradient-to-r from-slate-900/40 to-zinc-900/40 backdrop-blur-md rounded-xl p-6 border border-slate-600/30">
-          <h3 className="text-lg font-semibold text-white mb-3">Privacy Score</h3>
-          <div className="text-3xl font-bold text-indigo-400 mb-2">{user?.privacyScore || 94}%</div>
-          <p className="text-slate-400 text-sm">Excellent protection</p>
-        </div>
-        <div className="bg-gradient-to-r from-slate-900/40 to-zinc-900/40 backdrop-blur-md rounded-xl p-6 border border-slate-600/30">
-          <h3 className="text-lg font-semibold text-white mb-3">Transparency</h3>
-          <div className="text-3xl font-bold text-slate-400 mb-2">{user?.transparencyScore || 98}%</div>
-          <p className="text-slate-400 text-sm">Highly authentic</p>
-        </div>
-        <div className="bg-gradient-to-r from-slate-900/40 to-zinc-900/40 backdrop-blur-md rounded-xl p-6 border border-slate-600/30">
-          <h3 className="text-lg font-semibold text-white mb-3">Community</h3>
-          <div className="text-3xl font-bold text-purple-400 mb-2">{user?.communityScore || 96}%</div>
-          <p className="text-slate-400 text-sm">Great connections</p>
-        </div>
-      </div>
-    </div>
-  );
-
-  const Chat = () => (
-    <div className="max-w-6xl mx-auto p-6 flex flex-col lg:flex-row space-y-6 lg:space-y-0 lg:space-x-6 h-[calc(100vh-200px)]">
-      {/* Chat List */}
-      <div className="w-full lg:w-1/3 bg-gradient-to-r from-slate-900/60 to-zinc-900/60 backdrop-blur-md rounded-2xl border border-slate-600/40 overflow-hidden">
-        <div className="p-6 border-b border-slate-600/40">
-          <h2 className="text-xl font-semibold text-white mb-4">Messages</h2>
-          <div className="relative">
-            <Search className="absolute left-3 top-3 h-4 w-4 text-slate-500" />
-            <input
-              type="text"
-              placeholder="Search conversations..."
-              className="w-full pl-10 pr-4 py-2 bg-black/40 border border-slate-600/50 rounded-full text-white placeholder-slate-300 focus:outline-none focus:ring-2 focus:ring-slate-400"
-            />
-          </div>
-        </div>
-        <div className="overflow-y-auto max-h-96 lg:max-h-full">
-          {chats.length === 0 ? (
-            <div className="p-4 text-center text-slate-400">
-              <p>No conversations yet</p>
-            </div>
-          ) : (
-            chats.map(chat => (
-              <button
-                key={chat._id}
-                onClick={() => setSelectedChat(chat)}
-                className={`w-full p-4 text-left hover:bg-slate-700/30 transition-colors border-b border-slate-600/20 ${
-                  selectedChat?._id === chat._id ? 'bg-slate-700/40' : ''
-                }`}
-              >
-                <div className="flex items-center space-x-3">
-                  <div className="relative">
-                    <div className="w-12 h-12 bg-gradient-to-r from-slate-600 to-zinc-600 rounded-full flex items-center justify-center text-white font-semibold text-sm">
-                      {chat.participants?.[0]?.username?.slice(0, 2).toUpperCase() || 'UN'}
-                    </div>
-                    {chat.isOnline && (
-                      <div className="absolute -bottom-1 -right-1 w-4 h-4 bg-green-500 rounded-full border-2 border-slate-900"></div>
-                    )}
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <div className="font-semibold text-white">
-                      {chat.participants?.[0]?.username || 'Unknown User'}
-                    </div>
-                    <div className="text-sm text-slate-400 truncate">
-                      {chat.lastMessage?.content || 'No messages yet'}
-                    </div>
-                  </div>
-                </div>
-              </button>
-            ))
-          )}
-        </div>
-      </div>
-
-      {/* Chat Window */}
-      <div className="flex-1 bg-gradient-to-r from-slate-900/40 to-zinc-900/40 backdrop-blur-md rounded-2xl border border-slate-600/30 flex flex-col min-h-96">
-        {selectedChat ? (
-          <>
-            <div className="p-6 border-b border-slate-600/40 flex items-center space-x-4">
-              <div className="w-10 h-10 bg-gradient-to-r from-slate-600 to-zinc-600 rounded-full flex items-center justify-center text-white font-semibold text-sm">
-                {selectedChat.participants?.[0]?.username?.slice(0, 2).toUpperCase() || 'UN'}
-              </div>
-              <div>
-                <div className="font-semibold text-white">
-                  {selectedChat.participants?.[0]?.username || 'Unknown User'}
-                </div>
-                <div className={`text-sm ${selectedChat.isOnline ? 'text-green-400' : 'text-slate-400'}`}>
-                  {selectedChat.isOnline ? 'Online' : 'Offline'}
-                </div>
-              </div>
-            </div>
-            
-            <div className="flex-1 p-6 overflow-y-auto">
-              <div className="space-y-4">
-                <div className="flex justify-start">
-                  <div className="bg-slate-700/60 rounded-2xl rounded-bl-md px-4 py-2 max-w-xs">
-                    <p className="text-white">{selectedChat.lastMessage?.content}</p>
-                  </div>
-                </div>
-                <div className="flex justify-end">
-                  <div className="bg-zinc-700/60 rounded-2xl rounded-br-md px-4 py-2 max-w-xs">
-                    <p className="text-white">Thanks! Transparency is key 🔑</p>
-                  </div>
-                </div>
-                <div className="flex justify-start">
-                  <div className="bg-slate-700/60 rounded-2xl rounded-bl-md px-4 py-2 max-w-xs">
-                    <p className="text-white">Absolutely! The anti-stalker features are game-changing</p>
-                  </div>
-                </div>
-              </div>
-            </div>
-            
-            <div className="p-6 border-t border-slate-600/40">
-              <div className="flex space-x-4">
-                <input
-                  type="text"
-                  value={chatMessage}
-                  onChange={(e) => setChatMessage(e.target.value)}
-                  onKeyPress={(e) => e.key === 'Enter' && handleSendMessage()}
-                  placeholder="Send a transparent message..."
-                  className="flex-1 p-3 bg-black/40 border border-slate-600/50 rounded-full text-white placeholder-slate-300 focus:outline-none focus:ring-2 focus:ring-slate-400"
-                />
-                <button
-                  onClick={handleSendMessage}
-                  className="p-3 bg-gradient-to-r from-slate-700 to-zinc-700 text-white rounded-lg hover:scale-105 transform transition-all duration-300 border-2 border-amber-600/70 hover:border-amber-500"
-                >
-                  <Send className="h-5 w-5" />
-                </button>
-              </div>
-            </div>
-          </>
-        ) : (
-          <div className="flex-1 flex items-center justify-center">
-            <div className="text-center text-slate-400">
-              <MessageCircle className="h-16 w-16 mx-auto mb-4 opacity-50" />
-              <p className="text-xl">Select a conversation to start chatting</p>
-            </div>
-          </div>
-        )}
-      </div>
-    </div>
-  );
+  // Handle back to home from public view
+  const handleBackToHome = () => {
+    setIsPublicBrowsing(false);
+    setCurrentView('landing');
+  };
 
   // Show loading state during hydration
   if (!isClient) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-gray-900 via-slate-900 to-zinc-900 flex items-center justify-center">
         <div className="text-white text-2xl">Loading SickoScoop...</div>
+      </div>
+    );
+  }
+
+  // Show public browsing view
+  if (isPublicBrowsing && currentView === 'publicFeed') {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-gray-900 via-slate-900 to-zinc-900 relative overflow-hidden border-4 border-orange-600/80">
+        {/* Background Effects */}
+        <div className="absolute inset-0 opacity-8">
+          <div className="absolute top-20 left-1/4 w-64 h-64 bg-gradient-to-r from-purple-800 to-indigo-700 rounded-full blur-3xl animate-pulse"></div>
+          <div className="absolute bottom-20 right-1/4 w-80 h-80 bg-gradient-to-r from-slate-700 to-zinc-600 rounded-full blur-3xl animate-pulse delay-1000"></div>
+        </div>
+        
+        <div className="relative z-10">
+          <main className="container mx-auto">
+            <Feed 
+              user={null}
+              newPost=""
+              setNewPost={() => {}}
+              handlePost={() => {}}
+              loading={false}
+              fileInputRef={fileInputRef}
+              handleFileUpload={() => {}}
+              posts={allPosts}
+              handleLike={() => {}}
+              feedType="public"
+              setFeedType={() => {}}
+              isPublicView={true}
+              onLoginPrompt={handleLoginPrompt}
+              onBackToHome={handleBackToHome}
+            />
+          </main>
+        </div>
       </div>
     );
   }
@@ -1215,6 +1609,7 @@ const handleLogin = async () => {
         handleRegister={handleRegister}
         loading={loading}
         error={error}
+        onBrowsePublic={handleBrowsePublic}
       />
     );
   }
@@ -1236,11 +1631,45 @@ const handleLogin = async () => {
       )}
       
       <div className="relative z-10">
-        <Header />
+        <Header 
+          currentView={currentView}
+          setCurrentView={setCurrentView}
+          apiStatus={apiStatus}
+          handleLogout={handleLogout}
+          user={user}
+        />
         <main className="container mx-auto">
-          {currentView === 'feed' && <Feed />}
-          {currentView === 'profile' && <Profile />}
-          {currentView === 'chat' && <Chat />}
+          {currentView === 'feed' && (
+            <Feed 
+              user={user}
+              newPost={newPost}
+              setNewPost={setNewPost}
+              handlePost={handlePost}
+              loading={loading}
+              fileInputRef={fileInputRef}
+              handleFileUpload={handleFileUpload}
+              posts={posts}
+              handleLike={handleLike}
+              feedType={feedType}
+              setFeedType={setFeedType}
+              isPublicView={false}
+              onLoginPrompt={() => {}}
+              onBackToHome={() => {}}
+            />
+          )}
+          {currentView === 'profile' && (
+            <Profile user={user} posts={posts} />
+          )}
+          {currentView === 'chat' && (
+            <Chat 
+              chats={chats}
+              selectedChat={selectedChat}
+              setSelectedChat={setSelectedChat}
+              chatMessage={chatMessage}
+              setChatMessage={setChatMessage}
+              handleSendMessage={handleSendMessage}
+            />
+          )}
         </main>
       </div>
     </div>
