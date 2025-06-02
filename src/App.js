@@ -283,19 +283,21 @@ const Header = React.memo(({
         </button>
         
         <button
-          onClick={handleLogout}
-          className="px-3 py-2 text-sm rounded-lg transition-all duration-300 shadow-lg hover:scale-105"
-          style={{
-            background: '#ea580c',
-            border: '2px solid #ea580c',
-            color: 'white',
-            fontWeight: 'bold',
-            zIndex: 1000,
-            position: 'relative'
-          }}
-        >
-          Logout
-        </button>
+  onClick={handleLogout}
+  className="px-3 py-2 text-sm rounded-lg transition-all duration-300 shadow-lg hover:scale-105"
+  style={{
+    background: '#ea580c !important',
+    backgroundColor: '#ea580c !important',
+    border: '2px solid #ea580c !important',
+    borderColor: '#ea580c !important',
+    color: 'white !important',
+    fontWeight: 'bold',
+    zIndex: 1000,
+    position: 'relative'
+  }}
+>
+  Logout
+</button>
         <div 
           className="w-10 h-10 rounded-full flex items-center justify-center font-bold shadow-lg transition-all duration-300 cursor-pointer hover:scale-110"
           style={{
