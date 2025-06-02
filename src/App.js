@@ -532,12 +532,6 @@ const Feed = React.memo(({
           </div>
           <div className="flex space-x-3">
             <button
-              onClick={onBackToHome}
-              className="px-4 py-2 bg-gradient-to-r from-slate-700/60 to-zinc-700/60 text-white rounded-lg hover:scale-105 transform transition-all duration-300 border-2 border-slate-500/60 hover:border-slate-400"
-            >
-              ← Back to Home
-            </button>
-            <button
               onClick={onLoginPrompt}
               className="px-6 py-2 bg-gradient-to-r from-orange-300 via-red-400 via-blue-400 to-indigo-400 text-white rounded-lg hover:scale-105 transform transition-all duration-300 border-2 border-orange-300/70 hover:border-red-400 font-semibold"
             >
