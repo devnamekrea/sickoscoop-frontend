@@ -50,19 +50,33 @@ const LandingPage = React.memo(({
       </h1>
 
       {/* Subtitle */}
-      <div className="inline-block border-2 border-amber-500/80 rounded-lg px-6 py-3 mb-12">
+      <div className="inline-block border-2 border-amber-500/80 rounded-lg px-6 py-3 mb-8">
         <p className="text-xl md:text-2xl text-slate-300 leading-relaxed">
           revelation & transparency
         </p>
       </div>
 
-      {/* Browse Public Feed Button */}
-      <div className="mb-8">
+      {/* Browse Public Feed Button - Moved Higher */}
+      <div className="mb-8 flex flex-col items-center">
         <button
           onClick={onBrowsePublic}
-          className="px-8 py-3 bg-gradient-to-r from-slate-700/60 to-zinc-700/60 text-white text-lg font-medium rounded-lg hover:scale-105 transform transition-all duration-300 border-2 border-slate-500/60 hover:border-slate-400 backdrop-blur-md"
+          className="px-8 py-3 bg-gradient-to-r from-gray-900 via-slate-800 to-black text-white text-lg font-semibold rounded-lg hover:scale-105 transform transition-all duration-300 shadow-2xl hover:shadow-amber-500/50 border-2 border-amber-500/80 hover:border-amber-400 hover:from-gray-800 hover:via-slate-700 hover:to-gray-900 backdrop-blur-md flex items-center space-x-3"
         >
-          🌍 Browse Public Feed
+          {/* Mystical Combined Symbol */}
+          <div className="relative w-6 h-6">
+            {/* Base circle from first icon */}
+            <div className="absolute inset-0 bg-gradient-to-br from-purple-400 via-indigo-500 to-violet-600 rounded-full opacity-80 blur-sm animate-pulse"></div>
+            <div className="absolute inset-1 bg-gradient-to-tr from-orange-400 via-amber-500 to-red-500 rounded-full opacity-90"></div>
+            
+            {/* Diamond overlay from second icon */}
+            <div className="absolute inset-0 bg-gradient-to-br from-cyan-400 via-blue-500 to-indigo-600 transform rotate-45 opacity-70 blur-sm"></div>
+            <div className="absolute inset-1 bg-gradient-to-tr from-amber-300 via-orange-400 to-red-400 transform rotate-45 opacity-80"></div>
+            
+            {/* Triangle overlay from third icon */}
+            <div className="absolute inset-0 bg-gradient-to-bl from-violet-400 via-purple-500 to-indigo-600 opacity-60" style={{clipPath: 'polygon(50% 10%, 10% 90%, 90% 90%)'}}></div>
+            <div className="absolute inset-1 bg-gradient-to-tl from-orange-300 via-amber-400 to-yellow-400 opacity-70 animate-pulse" style={{clipPath: 'polygon(50% 15%, 15% 85%, 85% 85%)'}}></div>
+          </div>
+          <span>Browse Public Feed</span>
         </button>
         <p className="text-slate-400 text-sm mt-2">See what people are sharing • No account required</p>
       </div>
@@ -494,9 +508,25 @@ const Feed = React.memo(({
     {isPublicView && (
       <div className="mb-6 bg-gradient-to-r from-slate-900/60 to-zinc-900/60 backdrop-blur-md rounded-2xl p-6 border border-slate-600/40">
         <div className="flex flex-col md:flex-row items-center justify-between space-y-4 md:space-y-0">
-          <div>
-            <h1 className="text-2xl font-bold text-white mb-2">🌍 SickoScoop Public Feed</h1>
-            <p className="text-slate-300">Discover genuine conversations and transparent connections</p>
+          <div className="flex items-center space-x-3">
+            {/* Mystical Symbol */}
+            <div className="relative w-8 h-8">
+              {/* Base circle from first icon */}
+              <div className="absolute inset-0 bg-gradient-to-br from-purple-400 via-indigo-500 to-violet-600 rounded-full opacity-80 blur-sm animate-pulse"></div>
+              <div className="absolute inset-1 bg-gradient-to-tr from-orange-400 via-amber-500 to-red-500 rounded-full opacity-90"></div>
+              
+              {/* Diamond overlay from second icon */}
+              <div className="absolute inset-0 bg-gradient-to-br from-cyan-400 via-blue-500 to-indigo-600 transform rotate-45 opacity-70 blur-sm"></div>
+              <div className="absolute inset-1 bg-gradient-to-tr from-amber-300 via-orange-400 to-red-400 transform rotate-45 opacity-80"></div>
+              
+              {/* Triangle overlay from third icon */}
+              <div className="absolute inset-0 bg-gradient-to-bl from-violet-400 via-purple-500 to-indigo-600 opacity-60" style={{clipPath: 'polygon(50% 10%, 10% 90%, 90% 90%)'}}></div>
+              <div className="absolute inset-1 bg-gradient-to-tl from-orange-300 via-amber-400 to-yellow-400 opacity-70 animate-pulse" style={{clipPath: 'polygon(50% 15%, 15% 85%, 85% 85%)'}}></div>
+            </div>
+            <div>
+              <h1 className="text-2xl font-bold text-white mb-2">SickoScoop Public Feed</h1>
+              <p className="text-slate-300">Discover genuine conversations and transparent connections</p>
+            </div>
           </div>
           <div className="flex space-x-3">
             <button
@@ -507,7 +537,7 @@ const Feed = React.memo(({
             </button>
             <button
               onClick={onLoginPrompt}
-              className="px-6 py-2 bg-gradient-to-r from-amber-600 to-orange-600 text-white rounded-lg hover:scale-105 transform transition-all duration-300 border-2 border-amber-500/70 hover:border-amber-400 font-semibold"
+              className="px-6 py-2 bg-gradient-to-r from-orange-300 via-red-400 via-blue-400 to-indigo-400 text-white rounded-lg hover:scale-105 transform transition-all duration-300 border-2 border-orange-300/70 hover:border-red-400 font-semibold"
             >
               Join SickoScoop
             </button>
@@ -536,19 +566,25 @@ const Feed = React.memo(({
           <div className="flex space-x-1">
             <button
               onClick={() => setFeedType('public')}
-              className={`px-6 py-2 rounded-lg transition-all font-medium ${
+              className={`px-6 py-2 rounded-lg transition-all font-medium flex items-center space-x-2 ${
                 feedType === 'public' 
-                  ? 'bg-gradient-to-r from-slate-700 to-zinc-700 text-white border-2 border-amber-500/70' 
+                  ? 'bg-gradient-to-r from-slate-700 to-zinc-700 text-white border-2 border-purple-500/70' 
                   : 'text-slate-300 hover:text-white hover:bg-slate-700/30'
               }`}
             >
-              🌍 Public Feed
+              <div className="relative w-4 h-4">
+                {/* Mini mystical symbol */}
+                <div className="absolute inset-0 bg-gradient-to-br from-purple-400 via-indigo-500 to-violet-600 rounded-full opacity-80 animate-pulse"></div>
+                <div className="absolute inset-0.5 bg-gradient-to-tr from-cyan-400 via-blue-500 to-indigo-600 transform rotate-45 opacity-70"></div>
+                <div className="absolute inset-0 bg-gradient-to-bl from-violet-400 via-purple-500 to-indigo-600 opacity-60" style={{clipPath: 'polygon(50% 10%, 10% 90%, 90% 90%)'}}></div>
+              </div>
+              <span>Public Feed</span>
             </button>
             <button
               onClick={() => setFeedType('personal')}
               className={`px-6 py-2 rounded-lg transition-all font-medium ${
                 feedType === 'personal' 
-                  ? 'bg-gradient-to-r from-slate-700 to-zinc-700 text-white border-2 border-amber-500/70' 
+                  ? 'bg-gradient-to-r from-slate-700 to-zinc-700 text-white border-2 border-purple-500/70' 
                   : 'text-slate-300 hover:text-white hover:bg-slate-700/30'
               }`}
             >
@@ -559,28 +595,23 @@ const Feed = React.memo(({
       </div>
     )}
 
-    {/* Call to action for public viewers */}
-    {isPublicView && (
-      <div className="mb-6 bg-gradient-to-r from-amber-900/20 to-orange-900/20 backdrop-blur-md rounded-xl p-4 border border-amber-500/30">
-        <div className="text-center">
-          <p className="text-amber-200 mb-3">
-            <span className="font-semibold">Like what you see?</span> Join SickoScoop to interact with posts, share your thoughts, and connect with our community!
-          </p>
-          <button
-            onClick={onLoginPrompt}
-            className="px-6 py-2 bg-gradient-to-r from-amber-600 to-orange-600 text-white rounded-lg hover:scale-105 transform transition-all duration-300 border-2 border-amber-500/70 hover:border-amber-400 font-semibold"
-          >
-            Sign Up Now
-          </button>
-        </div>
-      </div>
-    )}
-
     {/* Feed Content */}
     {posts.length === 0 ? (
       <div className="text-center text-slate-400 py-8">
-        <div className="mb-4">
-          {isPublicView ? '🌍' : (feedType === 'public' ? '🌍' : '👤')}
+        <div className="mb-4 flex justify-center">
+          {isPublicView || feedType === 'public' ? (
+            <div className="relative w-12 h-12">
+              {/* Mystical symbol for loading */}
+              <div className="absolute inset-0 bg-gradient-to-br from-purple-400 via-indigo-500 to-violet-600 rounded-full opacity-80 blur-sm animate-pulse"></div>
+              <div className="absolute inset-1 bg-gradient-to-tr from-orange-400 via-amber-500 to-red-500 rounded-full opacity-90"></div>
+              <div className="absolute inset-0 bg-gradient-to-br from-cyan-400 via-blue-500 to-indigo-600 transform rotate-45 opacity-70 blur-sm"></div>
+              <div className="absolute inset-1 bg-gradient-to-tr from-amber-300 via-orange-400 to-red-400 transform rotate-45 opacity-80"></div>
+              <div className="absolute inset-0 bg-gradient-to-bl from-violet-400 via-purple-500 to-indigo-600 opacity-60" style={{clipPath: 'polygon(50% 10%, 10% 90%, 90% 90%)'}}></div>
+              <div className="absolute inset-1 bg-gradient-to-tl from-orange-300 via-amber-400 to-yellow-400 opacity-70 animate-pulse" style={{clipPath: 'polygon(50% 15%, 15% 85%, 85% 85%)'}}></div>
+            </div>
+          ) : (
+            <span className="text-4xl">👤</span>
+          )}
         </div>
         <p>
           {isPublicView 
@@ -600,12 +631,30 @@ const Feed = React.memo(({
     ) : (
       <>
         <div className="text-center mb-4">
-          <p className="text-slate-400 text-sm">
-            {isPublicView 
-              ? `🌍 Public Feed • ${posts.length} posts from the community` 
-              : feedType === 'public' 
-                ? `🌍 Public Feed • ${posts.length} posts from the community` 
-                : `👤 Your Feed • ${posts.length} personalized posts`}
+          <p className="text-slate-400 text-sm flex items-center justify-center space-x-2">
+            {isPublicView ? (
+              <>
+                <div className="relative w-4 h-4">
+                  {/* Mini mystical symbol */}
+                  <div className="absolute inset-0 bg-gradient-to-br from-purple-400 via-indigo-500 to-violet-600 rounded-full opacity-80 animate-pulse"></div>
+                  <div className="absolute inset-0.5 bg-gradient-to-tr from-cyan-400 via-blue-500 to-indigo-600 transform rotate-45 opacity-70"></div>
+                  <div className="absolute inset-0 bg-gradient-to-bl from-violet-400 via-purple-500 to-indigo-600 opacity-60" style={{clipPath: 'polygon(50% 10%, 10% 90%, 90% 90%)'}}></div>
+                </div>
+                <span>Public Feed • {posts.length} posts from the community</span>
+              </>
+            ) : feedType === 'public' ? (
+              <>
+                <div className="relative w-4 h-4">
+                  {/* Mini mystical symbol */}
+                  <div className="absolute inset-0 bg-gradient-to-br from-purple-400 via-indigo-500 to-violet-600 rounded-full opacity-80 animate-pulse"></div>
+                  <div className="absolute inset-0.5 bg-gradient-to-tr from-cyan-400 via-blue-500 to-indigo-600 transform rotate-45 opacity-70"></div>
+                  <div className="absolute inset-0 bg-gradient-to-bl from-violet-400 via-purple-500 to-indigo-600 opacity-60" style={{clipPath: 'polygon(50% 10%, 10% 90%, 90% 90%)'}}></div>
+                </div>
+                <span>Public Feed • {posts.length} posts from the community</span>
+              </>
+            ) : (
+              <span>👤 Your Feed • {posts.length} personalized posts</span>
+            )}
           </p>
         </div>
         {posts.map(post => (
@@ -628,7 +677,7 @@ const Feed = React.memo(({
         <p className="text-slate-300 mb-4">Create your account to post, like, comment, and connect with the SickoScoop community.</p>
         <button
           onClick={onLoginPrompt}
-          className="px-8 py-3 bg-gradient-to-r from-amber-600 to-orange-600 text-white text-lg font-semibold rounded-lg hover:scale-105 transform transition-all duration-300 border-2 border-amber-500/70 hover:border-amber-400"
+          className="px-8 py-3 bg-gradient-to-r from-orange-300 via-red-400 via-blue-400 to-indigo-400 text-white text-lg font-semibold rounded-lg hover:scale-105 transform transition-all duration-300 border-2 border-orange-300/70 hover:border-red-400"
         >
           Join SickoScoop Today
         </button>
