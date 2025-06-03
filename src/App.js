@@ -49,12 +49,7 @@ const LandingPage = React.memo(({
         </span>
       </h1>
 
-      {/* Subtitle */}
-      <div className="inline-block border-2 border-amber-500/80 rounded-lg px-6 py-3 mb-8">
-        <p className="text-xl md:text-2xl text-slate-300 leading-relaxed">
-          revelation & transparency
-        </p>
-      </div>
+      {/* Subtitle - REMOVED revelation & transparency */}
 
       {/* Browse Public Feed Button - Moved Higher */}
       <div className="mb-8 flex flex-col items-center">
@@ -356,7 +351,7 @@ const PostCreator = React.memo(({
               <Mic className="h-4 w-4" />
               <span>Audio</span>
             </button>
-            <button className="flex items-center space-x-2 px-3 py-2 bg-slate-700/60 rounded-lg text-slate-300 hover:bg-slate-700 transition-colors border-2 border-amber-600/50 hover:border-amber-500 text-sm">
+            <button className="flex items-center space-x-2 px-3 py-2 bg-slate-700/60 rounded-lg text-slate-300 hover:bg-slate-700 transition-colors border-2 border-amber-amber-600/50 hover:border-amber-500 text-sm">
               <FileText className="h-4 w-4" />
               <span>PDF</span>
             </button>
@@ -509,35 +504,34 @@ const Feed = React.memo(({
     {/* Public View Header */}
     {isPublicView && (
       <div className="mb-6 bg-gradient-to-r from-slate-900/60 to-zinc-900/60 backdrop-blur-md rounded-2xl p-6 border border-slate-600/40">
-        <div className="flex flex-col md:flex-row items-center justify-between space-y-4 md:space-y-0">
-          <div className="flex items-center space-x-3">
-            {/* Mystical Symbol */}
-            <div className="relative w-8 h-8">
-              {/* Base circle from first icon */}
-              <div className="absolute inset-0 bg-gradient-to-br from-purple-400 via-indigo-500 to-violet-600 rounded-full opacity-80 blur-sm animate-pulse"></div>
-              <div className="absolute inset-1 bg-gradient-to-tr from-orange-400 via-amber-500 to-red-500 rounded-full opacity-90"></div>
-              
-              {/* Diamond overlay from second icon */}
-              <div className="absolute inset-0 bg-gradient-to-br from-cyan-400 via-blue-500 to-indigo-600 transform rotate-45 opacity-70 blur-sm"></div>
-              <div className="absolute inset-1 bg-gradient-to-tr from-amber-300 via-orange-400 to-red-400 transform rotate-45 opacity-80"></div>
-              
-              {/* Triangle overlay from third icon */}
-              <div className="absolute inset-0 bg-gradient-to-bl from-violet-400 via-purple-500 to-indigo-600 opacity-60" style={{clipPath: 'polygon(50% 10%, 10% 90%, 90% 90%)'}}></div>
-              <div className="absolute inset-1 bg-gradient-to-tl from-orange-300 via-amber-400 to-yellow-400 opacity-70 animate-pulse" style={{clipPath: 'polygon(50% 15%, 15% 85%, 85% 85%)'}}></div>
-            </div>
-            <div>
-              <h1 className="text-2xl font-bold text-white mb-2">SickoScoop Public Feed</h1>
-              <p className="text-slate-300">Discover genuine conversations and transparent connections</p>
-            </div>
+        <div className="flex items-center">
+          {/* Left: Mystical Symbol */}
+          <div className="relative w-8 h-8 flex-shrink-0">
+            {/* Base circle from first icon */}
+            <div className="absolute inset-0 bg-gradient-to-br from-purple-400 via-indigo-500 to-violet-600 rounded-full opacity-80 blur-sm animate-pulse"></div>
+            <div className="absolute inset-1 bg-gradient-to-tr from-orange-400 via-amber-500 to-red-500 rounded-full opacity-90"></div>
+            
+            {/* Diamond overlay from second icon */}
+            <div className="absolute inset-0 bg-gradient-to-br from-cyan-400 via-blue-500 to-indigo-600 transform rotate-45 opacity-70 blur-sm"></div>
+            <div className="absolute inset-1 bg-gradient-to-tr from-amber-300 via-orange-400 to-red-400 transform rotate-45 opacity-80"></div>
+            
+            {/* Triangle overlay from third icon */}
+            <div className="absolute inset-0 bg-gradient-to-bl from-violet-400 via-purple-500 to-indigo-600 opacity-60" style={{clipPath: 'polygon(50% 10%, 10% 90%, 90% 90%)'}}></div>
+            <div className="absolute inset-1 bg-gradient-to-tl from-orange-300 via-amber-400 to-yellow-400 opacity-70 animate-pulse" style={{clipPath: 'polygon(50% 15%, 15% 85%, 85% 85%)'}}></div>
           </div>
-          <div className="flex space-x-3">
-            <button
-              onClick={onLoginPrompt}
-              className="px-6 py-2 bg-gradient-to-r from-orange-300 via-red-400 via-blue-400 to-indigo-400 text-white rounded-lg hover:scale-105 transform transition-all duration-300 border-2 border-orange-300/70 hover:border-red-400 font-semibold"
-            >
-              Join SickoScoop
-            </button>
+          
+          {/* Center: Title (centered between symbol and button) */}
+          <div className="flex-1 text-center">
+            <h1 className="text-2xl font-bold text-white whitespace-nowrap">SickoScoop Public Feed</h1>
           </div>
+          
+          {/* Right: Button */}
+          <button
+            onClick={onLoginPrompt}
+            className="flex-shrink-0 px-6 py-2 bg-gradient-to-r from-orange-300 via-red-400 via-blue-400 to-indigo-400 text-white rounded-lg hover:scale-105 transform transition-all duration-300 border-2 border-orange-300/70 hover:border-red-400 font-semibold"
+          >
+            Join SickoScoop
+          </button>
         </div>
       </div>
     )}
@@ -669,13 +663,12 @@ const Feed = React.memo(({
     {/* Bottom CTA for public viewers */}
     {isPublicView && posts.length > 0 && (
       <div className="mt-8 text-center bg-gradient-to-r from-slate-900/40 to-zinc-900/40 backdrop-blur-md rounded-xl p-6 border border-slate-600/30">
-        <h3 className="text-xl font-semibold text-white mb-2">Ready to join the conversation?</h3>
         <p className="text-slate-300 mb-4">Create your account to post, like, comment, and connect with the SickoScoop community.</p>
         <button
           onClick={onLoginPrompt}
           className="px-8 py-3 bg-gradient-to-r from-orange-300 via-red-400 via-blue-400 to-indigo-400 text-white text-lg font-semibold rounded-lg hover:scale-105 transform transition-all duration-300 border-2 border-orange-300/70 hover:border-red-400"
         >
-          Join SickoScoop Today
+          Join SickoScoop
         </button>
       </div>
     )}
