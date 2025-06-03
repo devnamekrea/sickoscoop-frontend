@@ -4,32 +4,66 @@
     <meta charset="utf-8" />
     <link rel="icon" href="%PUBLIC_URL%/favicon.ico" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <meta name="theme-color" content="#000000" />
+    <meta name="theme-color" content="#1a1a2e" />
+    
+    <!-- Basic Meta Tags -->
     <meta
       name="description"
-      content="SickoScoop - Revolutionary social media platform with anti-stalking protection"
+      content="SickoScoop - Stop stalkers through revelation & transparency. Revolutionary social media platform promoting genuine communication. Browse public feeds, no account required."
     />
+    <meta name="keywords" content="social media, transparency, genuine communication, stop stalkers, sickoscoop, revelation" />
+    <meta name="author" content="SickoScoop" />
+    
+    <!-- Open Graph Meta Tags (Facebook, LinkedIn, WhatsApp, iMessage, etc.) -->
+    <meta property="og:title" content="SickoScoop - Stop Stalkers Through Revelation & Transparency" />
+    <meta property="og:description" content="Revolutionary social media platform promoting genuine communication and transparency. Browse public feeds and stop stalkers through revelation. No account required to browse." />
+    <meta property="og:image" content="%PUBLIC_URL%/og-image.png" />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:url" content="https://sickoscoop.netlify.app/" />
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content="SickoScoop" />
+    
+    <!-- Twitter Card Meta Tags -->
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="SickoScoop - Stop Stalkers Through Revelation & Transparency" />
+    <meta name="twitter:description" content="Revolutionary social media platform promoting genuine communication and transparency. Browse public feeds and stop stalkers through revelation." />
+    <meta name="twitter:image" content="%PUBLIC_URL%/og-image.png" />
+    
+    <!-- Additional Meta Tags -->
+    <meta name="msapplication-TileColor" content="#1a1a2e" />
+    <meta name="application-name" content="SickoScoop" />
+    
     <link rel="apple-touch-icon" href="%PUBLIC_URL%/logo192.png" />
     <link rel="manifest" href="%PUBLIC_URL%/manifest.json" />
     
     <!-- Tailwind CSS CDN -->
     <script src="https://cdn.tailwindcss.com"></script>
     <script>
-      tailwind.config = {
-        theme: {
-          extend: {
-            animation: {
-              'pulse': 'pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite',
-            },
-            blur: {
-              'xs': '2px',
+      // More reliable Tailwind config with retry mechanism
+      function setupTailwind() {
+        if (typeof tailwind !== 'undefined') {
+          tailwind.config = {
+            theme: {
+              extend: {
+                animation: {
+                  'pulse': 'pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite',
+                },
+                blur: {
+                  'xs': '2px',
+                }
+              }
             }
           }
+        } else {
+          // Retry after a short delay if tailwind isn't ready yet
+          setTimeout(setupTailwind, 50);
         }
       }
+      setupTailwind();
     </script>
     
-    <title>SickoScoop - Stop Stalkers</title>
+    <title>SickoScoop - Stop Stalkers Through Revelation & Transparency</title>
   </head>
   <body>
     <noscript>You need to enable JavaScript to run this app.</noscript>
