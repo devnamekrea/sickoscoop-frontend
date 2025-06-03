@@ -504,9 +504,9 @@ const Feed = React.memo(({
     {/* Public View Header */}
     {isPublicView && (
       <div className="mb-6 bg-gradient-to-r from-slate-900/60 to-zinc-900/60 backdrop-blur-md rounded-2xl p-6 border border-slate-600/40">
-        <div className="flex items-center">
+        <div className="flex flex-col md:flex-row items-center md:items-center space-y-4 md:space-y-0">
           {/* Left: Mystical Symbol */}
-          <div className="relative w-8 h-8 flex-shrink-0">
+          <div className="relative w-8 h-8 flex-shrink-0 md:mr-0">
             {/* Base circle from first icon */}
             <div className="absolute inset-0 bg-gradient-to-br from-purple-400 via-indigo-500 to-violet-600 rounded-full opacity-80 blur-sm animate-pulse"></div>
             <div className="absolute inset-1 bg-gradient-to-tr from-orange-400 via-amber-500 to-red-500 rounded-full opacity-90"></div>
@@ -520,15 +520,15 @@ const Feed = React.memo(({
             <div className="absolute inset-1 bg-gradient-to-tl from-orange-300 via-amber-400 to-yellow-400 opacity-70 animate-pulse" style={{clipPath: 'polygon(50% 15%, 15% 85%, 85% 85%)'}}></div>
           </div>
           
-          {/* Center: Title (centered between symbol and button) */}
-          <div className="flex-1 text-center">
-            <h1 className="text-2xl font-bold text-white whitespace-nowrap">SickoScoop Public Feed</h1>
+          {/* Center: Title (responsive) */}
+          <div className="flex-1 text-center md:mx-4">
+            <h1 className="text-xl md:text-2xl font-bold text-white whitespace-nowrap">SickoScoop Public Feed</h1>
           </div>
           
           {/* Right: Button */}
           <button
             onClick={onLoginPrompt}
-            className="flex-shrink-0 px-6 py-2 bg-gradient-to-r from-orange-300 via-red-400 via-blue-400 to-indigo-400 text-white rounded-lg hover:scale-105 transform transition-all duration-300 border-2 border-orange-300/70 hover:border-red-400 font-semibold"
+            className="flex-shrink-0 px-4 md:px-6 py-2 bg-gradient-to-r from-orange-300 via-red-400 via-blue-400 to-indigo-400 text-white rounded-lg hover:scale-105 transform transition-all duration-300 border-2 border-orange-300/70 hover:border-red-400 font-semibold text-sm md:text-base"
           >
             Join SickoScoop
           </button>
