@@ -214,119 +214,206 @@ const LandingPage = React.memo(({
 ));
 
 // Move ConnectionStatus outside to prevent re-creation
-const ConnectionStatus = React.memo(({ apiStatus }) => (
-  <div className={`text-xs px-2 py-1 rounded-full ${
-    apiStatus === 'connected' 
-      ? 'bg-green-500/20 text-green-400' 
-      : apiStatus === 'disconnected'
-      ? 'bg-red-500/20 text-red-400'
-      : 'bg-yellow-500/20 text-yellow-400'
-  }`}>
-    {apiStatus === 'connected' ? '● Connected' : 
-     apiStatus === 'disconnected' ? '● Demo Mode' : '● Checking...'}
-  </div>
-));
-
-// Move Header outside to prevent re-creation
-// Updated Header component - replace the existing one in your App.js
-// Replace your existing Header component (around line 233) with this:
-// Replace your Header component with this improved version:
-
 const Header = React.memo(({ 
   currentView, 
   setCurrentView, 
   apiStatus, 
   handleLogout, 
   user 
-}) => (
-  <header className="bg-gradient-to-r from-gray-900 via-slate-900 to-zinc-900 shadow-2xl border-b border-amber-500/30 backdrop-blur-md relative z-50">
-    <div className="container mx-auto px-6 py-4">
-      <div className="flex items-center justify-between">
-        {/* Left: Logo */}
-        <div className="flex-shrink-0">
-          <div className="text-2xl md:text-3xl font-bold bg-gradient-to-r from-slate-300 to-purple-400 bg-clip-text text-transparent">
-            SickoScoop
-          </div>
-        </div>
+}) => {
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const [isSearchOpen, setIsSearchOpen] = useState(false);
 
-        {/* Center: Navigation + Search */}
-        <div className="flex items-center space-x-8 flex-1 justify-center max-w-4xl mx-8">
-          {/* Navigation Buttons */}
-          <div className="flex space-x-6">
+  return (
+    <header className="bg-gradient-to-r from-gray-900 via-slate-900 to-zinc-900 shadow-2xl border-b border-amber-500/30 backdrop-blur-md relative z-50">
+      <div className="container mx-auto px-4 py-3">
+        {/* Main Header Row */}
+        <div className="flex items-center justify-between">
+          {/* Left: Logo + Mobile Menu Button */}
+          <div className="flex items-center space-x-3 flex-shrink-0">
+            <div className="text-xl md:text-2xl lg:text-3xl font-bold bg-gradient-to-r from-slate-300 to-purple-400 bg-clip-text text-transparent">
+              SickoScoop
+            </div>
+            
+            {/* Mobile Menu Button */}
             <button
-              onClick={() => setCurrentView('feed')}
-              className={`px-5 py-2.5 rounded-lg border-2 transition-all duration-200 font-medium ${
-                currentView === 'feed' 
-                  ? 'bg-slate-700 text-white border-amber-500 shadow-lg shadow-amber-500/20' 
-                  : 'text-slate-300 hover:text-white border-amber-600/50 hover:border-amber-500 hover:bg-slate-800/50'
-              }`}
+              onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
+              className="md:hidden p-2 text-slate-300 hover:text-white transition-colors rounded-lg hover:bg-slate-800/50"
             >
-              Feed
-            </button>
-            <button
-              onClick={() => setCurrentView('profile')}
-              className={`px-5 py-2.5 rounded-lg border-2 transition-all duration-200 font-medium ${
-                currentView === 'profile' 
-                  ? 'bg-slate-700 text-white border-amber-500 shadow-lg shadow-amber-500/20' 
-                  : 'text-slate-300 hover:text-white border-amber-600/50 hover:border-amber-500 hover:bg-slate-800/50'
-              }`}
-            >
-              Profile
-            </button>
-            <button
-              onClick={() => setCurrentView('chat')}
-              className={`px-5 py-2.5 rounded-lg border-2 transition-all duration-200 font-medium ${
-                currentView === 'chat' 
-                  ? 'bg-slate-700 text-white border-amber-500 shadow-lg shadow-amber-500/20' 
-                  : 'text-slate-300 hover:text-white border-amber-600/50 hover:border-amber-500 hover:bg-slate-800/50'
-              }`}
-            >
-              Chat
+              <div className="w-5 h-5 flex flex-col justify-center space-y-1">
+                <div className={`h-0.5 bg-current transition-all duration-300 ${isMobileMenuOpen ? 'rotate-45 translate-y-1.5' : ''}`}></div>
+                <div className={`h-0.5 bg-current transition-all duration-300 ${isMobileMenuOpen ? 'opacity-0' : ''}`}></div>
+                <div className={`h-0.5 bg-current transition-all duration-300 ${isMobileMenuOpen ? '-rotate-45 -translate-y-1.5' : ''}`}></div>
+              </div>
             </button>
           </div>
 
-          {/* Search Bar */}
-          <div className="relative flex-1 max-w-md">
-            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-slate-500" />
-            <input
-              type="text"
-              placeholder="Search sicko..."
-              className="w-full pl-10 pr-4 py-2.5 bg-black/40 border border-slate-600/60 rounded-full text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-amber-500/50 focus:border-amber-500/70 transition-all duration-200"
-            />
+          {/* Center: Desktop Navigation */}
+          <div className="hidden md:flex items-center space-x-3 flex-1 justify-center max-w-2xl">
+            {/* Navigation Buttons */}
+            <div className="flex space-x-3">
+              <button
+                onClick={() => setCurrentView('feed')}
+                className={`px-4 py-2 rounded-lg border-2 transition-all duration-200 font-medium text-sm lg:text-base ${
+                  currentView === 'feed' 
+                    ? 'bg-slate-700 text-white border-amber-500 shadow-lg shadow-amber-500/20' 
+                    : 'text-slate-300 hover:text-white border-amber-600/50 hover:border-amber-500 hover:bg-slate-800/50'
+                }`}
+              >
+                Feed
+              </button>
+              <button
+                onClick={() => setCurrentView('profile')}
+                className={`px-4 py-2 rounded-lg border-2 transition-all duration-200 font-medium text-sm lg:text-base ${
+                  currentView === 'profile' 
+                    ? 'bg-slate-700 text-white border-amber-500 shadow-lg shadow-amber-500/20' 
+                    : 'text-slate-300 hover:text-white border-amber-600/50 hover:border-amber-500 hover:bg-slate-800/50'
+                }`}
+              >
+                Profile
+              </button>
+              <button
+                onClick={() => setCurrentView('chat')}
+                className={`px-4 py-2 rounded-lg border-2 transition-all duration-200 font-medium text-sm lg:text-base ${
+                  currentView === 'chat' 
+                    ? 'bg-slate-700 text-white border-amber-500 shadow-lg shadow-amber-500/20' 
+                    : 'text-slate-300 hover:text-white border-amber-600/50 hover:border-amber-500 hover:bg-slate-800/50'
+                }`}
+              >
+                Chat
+              </button>
+            </div>
+
+            {/* Desktop Search - Reduced width for better spacing */}
+            <div className="hidden lg:block relative ml-4">
+              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-slate-500" />
+              <input
+                type="text"
+                placeholder="Search sicko..."
+                className="w-64 xl:w-72 pl-10 pr-4 py-2 bg-black/40 border border-slate-600/60 rounded-full text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-amber-500/50 focus:border-amber-500/70 transition-all duration-200 text-sm"  
+              />
+            </div>
+          </div>
+
+          {/* Right: Actions - Reordered with user icon first */}
+          <div className="flex items-center flex-shrink-0 mr-2">
+            {/* Mobile Search Button */}
+            <button
+              onClick={() => setIsSearchOpen(!isSearchOpen)}
+              className="lg:hidden p-2 text-slate-300 hover:text-white transition-colors rounded-lg hover:bg-slate-800/50 mr-3"
+            >
+              <Search className="h-5 w-5" />
+            </button>
+
+            {/* User Avatar - Now first position */}
+            <div 
+              className="w-10 h-10 rounded-full flex items-center justify-center font-bold shadow-lg transition-all duration-200 cursor-pointer hover:scale-110 hover:shadow-xl text-sm bg-gradient-to-r from-amber-500 to-orange-600 border-2 border-amber-500/80 text-white mr-3"
+              onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
+            >
+              {user?.username?.slice(0, 2).toUpperCase() || 'YU'}
+            </div>
+
+            {/* Settings Button - Now second to last */}
+            <button className="p-2 text-slate-300 hover:text-white transition-colors duration-200 hover:bg-slate-800/50 rounded-lg mr-3">
+              <Settings className="h-5 w-5" />
+            </button>
+            
+            {/* Logout Button - Now last position */}
+            <button
+              onClick={handleLogout}
+              className="hidden sm:flex px-3 py-2 text-sm rounded-lg transition-all duration-200 hover:scale-105 bg-slate-700/40 text-slate-300 border-2 border-amber-600/40 hover:border-amber-500 hover:bg-slate-700/60 hover:text-white font-semibold"
+            >
+              Logout
+            </button>
           </div>
         </div>
 
-        {/* Right: Settings, Logout, User */}
-        <div className="flex items-center space-x-4 flex-shrink-0">
-          <button className="p-2.5 text-slate-300 hover:text-white transition-colors duration-200 hover:bg-slate-800/50 rounded-lg">
-            <Settings className="h-5 w-5" />
-          </button>
-          
-          <button
-            onClick={handleLogout}
-            className="px-4 py-2.5 text-sm rounded-lg transition-all duration-200 hover:scale-105 bg-slate-800/80 text-white border-2 border-amber-600/50 hover:border-amber-500 font-semibold hover:shadow-lg"
-          >
-            Logout
-          </button>
-          
-          <div 
-            className="w-10 h-10 rounded-full flex items-center justify-center font-bold shadow-lg transition-all duration-200 cursor-pointer hover:scale-110 hover:shadow-xl"
-            style={{
-              background: 'linear-gradient(45deg, #f59e0b, #d97706)',
-              border: '2px solid #f59e0b',
-              color: 'white',
-              fontWeight: 'bold',
-              zIndex: 1000,
-              position: 'relative'
-            }}
-          >
-            {user?.username?.slice(0, 2).toUpperCase() || 'YU'}
+        {/* Mobile Search Bar */}
+        {isSearchOpen && (
+          <div className="mt-3 lg:hidden">
+            <div className="relative">
+              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-slate-500" />
+              <input
+                type="text"
+                placeholder="Search sicko..."
+                className="w-full pl-10 pr-4 py-3 bg-black/40 border border-slate-600/60 rounded-full text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-amber-500/50 focus:border-amber-500/70 transition-all duration-200"
+                autoFocus
+              />
+            </div>
           </div>
-        </div>
+        )}
+
+        {/* Mobile Navigation Menu */}
+        {isMobileMenuOpen && (
+          <div className="md:hidden mt-4 pb-2 bg-black/20 rounded-xl p-4 border border-slate-600/30">
+            <div className="flex flex-col space-y-3">
+              {/* Navigation Buttons */}
+              <button
+                onClick={() => {
+                  setCurrentView('feed');
+                  setIsMobileMenuOpen(false);
+                }}
+                className={`px-4 py-3 rounded-lg border-2 transition-all duration-200 font-medium text-left flex items-center space-x-3 ${
+                  currentView === 'feed' 
+                    ? 'bg-slate-700 text-white border-amber-500 shadow-lg shadow-amber-500/20' 
+                    : 'text-slate-300 hover:text-white border-amber-600/50 hover:border-amber-500 hover:bg-slate-800/50'
+                }`}
+              >
+                <span className="text-lg">📱</span>
+                <span>Feed</span>
+              </button>
+              
+              <button
+                onClick={() => {
+                  setCurrentView('profile');
+                  setIsMobileMenuOpen(false);
+                }}
+                className={`px-4 py-3 rounded-lg border-2 transition-all duration-200 font-medium text-left flex items-center space-x-3 ${
+                  currentView === 'profile' 
+                    ? 'bg-slate-700 text-white border-amber-500 shadow-lg shadow-amber-500/20' 
+                    : 'text-slate-300 hover:text-white border-amber-600/50 hover:border-amber-500 hover:bg-slate-800/50'
+                }`}
+              >
+                <span className="text-lg">👤</span>
+                <span>Profile</span>
+              </button>
+              
+              <button
+                onClick={() => {
+                  setCurrentView('chat');
+                  setIsMobileMenuOpen(false);
+                }}
+                className={`px-4 py-3 rounded-lg border-2 transition-all duration-200 font-medium text-left flex items-center space-x-3 ${
+                  currentView === 'chat' 
+                    ? 'bg-slate-700 text-white border-amber-500 shadow-lg shadow-amber-500/20' 
+                    : 'text-slate-300 hover:text-white border-amber-600/50 hover:border-amber-500 hover:bg-slate-800/50'
+                }`}
+              >
+                <span className="text-lg">💬</span>
+                <span>Chat</span>
+              </button>
+              
+              {/* Divider */}
+              <div className="border-t border-slate-600/40 my-2"></div>
+              
+              {/* Mobile Logout */}
+              <button
+                onClick={() => {
+                  handleLogout();
+                  setIsMobileMenuOpen(false);
+                }}
+                className="px-4 py-3 rounded-lg border-2 border-amber-600/40 bg-slate-700/40 text-slate-300 hover:text-white hover:border-amber-500 hover:bg-slate-700/60 transition-all duration-200 font-medium text-left flex items-center space-x-3"  
+              >
+                <span className="text-lg">🚪</span>
+                <span>Logout</span>
+              </button>
+            </div>
+          </div>
+        )}
       </div>
-    </div>
-  </header>
-));
+    </header>
+  );
+});
 
 // Move PostCreator outside to prevent re-creation - THIS FIXES THE TYPING ISSUE
 // Updated PostCreator component - replace the existing one in your App.js
@@ -555,7 +642,7 @@ const Post = React.memo(({ post, user, handleLike, isPublicView = false, onLogin
               ))}
             </div>
           )}
-          <div className="flex items-center space-x-6 text-slate-400">
+          <div className="flex items-center space-x-4 text-slate-400">
             {isPublicView ? (
               // Read-only view for non-logged-in users
               <>
