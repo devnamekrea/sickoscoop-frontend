@@ -228,6 +228,10 @@ const ConnectionStatus = React.memo(({ apiStatus }) => (
 ));
 
 // Move Header outside to prevent re-creation
+// Updated Header component - replace the existing one in your App.js
+// Replace your existing Header component (around line 233) with this:
+// Replace your Header component with this improved version:
+
 const Header = React.memo(({ 
   currentView, 
   setCurrentView, 
@@ -236,75 +240,88 @@ const Header = React.memo(({
   user 
 }) => (
   <header className="bg-gradient-to-r from-gray-900 via-slate-900 to-zinc-900 shadow-2xl border-b border-amber-500/30 backdrop-blur-md relative z-50">
-    <div className="container mx-auto px-4 py-4 flex items-center justify-between">
-      <div className="flex items-center space-x-4">
-        <div className="text-2xl md:text-3xl font-bold bg-gradient-to-r from-slate-300 to-purple-400 bg-clip-text text-transparent">
-          SickoScoop
+    <div className="container mx-auto px-6 py-4">
+      <div className="flex items-center justify-between">
+        {/* Left: Logo */}
+        <div className="flex-shrink-0">
+          <div className="text-2xl md:text-3xl font-bold bg-gradient-to-r from-slate-300 to-purple-400 bg-clip-text text-transparent">
+            SickoScoop
+          </div>
         </div>
-        <ConnectionStatus apiStatus={apiStatus} />
-        <div className="hidden md:flex space-x-6">
-          <button
-            onClick={() => setCurrentView('feed')}
-            className={`px-4 py-2 rounded-lg border-2 transition-all ${currentView === 'feed' ? 'bg-slate-700 text-white border-amber-500' : 'text-slate-300 hover:text-white border-amber-600/50 hover:border-amber-500'}`}
-          >
-            Feed
-          </button>
-          <button
-            onClick={() => setCurrentView('profile')}
-            className={`px-4 py-2 rounded-lg border-2 transition-all ${currentView === 'profile' ? 'bg-slate-700 text-white border-amber-500' : 'text-slate-300 hover:text-white border-amber-600/50 hover:border-amber-500'}`}
-          >
-            Profile
-          </button>
-          <button
-            onClick={() => setCurrentView('chat')}
-            className={`px-4 py-2 rounded-lg border-2 transition-all ${currentView === 'chat' ? 'bg-slate-700 text-white border-amber-500' : 'text-slate-300 hover:text-white border-amber-600/50 hover:border-amber-500'}`}
-          >
-            Chat
-          </button>
+
+        {/* Center: Navigation + Search */}
+        <div className="flex items-center space-x-8 flex-1 justify-center max-w-4xl mx-8">
+          {/* Navigation Buttons */}
+          <div className="flex space-x-6">
+            <button
+              onClick={() => setCurrentView('feed')}
+              className={`px-5 py-2.5 rounded-lg border-2 transition-all duration-200 font-medium ${
+                currentView === 'feed' 
+                  ? 'bg-slate-700 text-white border-amber-500 shadow-lg shadow-amber-500/20' 
+                  : 'text-slate-300 hover:text-white border-amber-600/50 hover:border-amber-500 hover:bg-slate-800/50'
+              }`}
+            >
+              Feed
+            </button>
+            <button
+              onClick={() => setCurrentView('profile')}
+              className={`px-5 py-2.5 rounded-lg border-2 transition-all duration-200 font-medium ${
+                currentView === 'profile' 
+                  ? 'bg-slate-700 text-white border-amber-500 shadow-lg shadow-amber-500/20' 
+                  : 'text-slate-300 hover:text-white border-amber-600/50 hover:border-amber-500 hover:bg-slate-800/50'
+              }`}
+            >
+              Profile
+            </button>
+            <button
+              onClick={() => setCurrentView('chat')}
+              className={`px-5 py-2.5 rounded-lg border-2 transition-all duration-200 font-medium ${
+                currentView === 'chat' 
+                  ? 'bg-slate-700 text-white border-amber-500 shadow-lg shadow-amber-500/20' 
+                  : 'text-slate-300 hover:text-white border-amber-600/50 hover:border-amber-500 hover:bg-slate-800/50'
+              }`}
+            >
+              Chat
+            </button>
+          </div>
+
+          {/* Search Bar */}
+          <div className="relative flex-1 max-w-md">
+            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-slate-500" />
+            <input
+              type="text"
+              placeholder="Search sicko..."
+              className="w-full pl-10 pr-4 py-2.5 bg-black/40 border border-slate-600/60 rounded-full text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-amber-500/50 focus:border-amber-500/70 transition-all duration-200"
+            />
+          </div>
         </div>
-      </div>
-      
-      <div className="flex items-center space-x-4">
-        <div className="hidden md:block relative">
-          <Search className="absolute left-3 top-3 h-4 w-4 text-slate-500" />
-          <input
-            type="text"
-            placeholder="Search the scoop..."
-            className="pl-10 pr-4 py-2 bg-black/40 border border-slate-600/60 rounded-full text-white placeholder-slate-300 focus:outline-none focus:ring-2 focus:ring-slate-400"
-          />
-        </div>
-        <button className="p-2 text-slate-300 hover:text-white transition-colors">
-          <Settings className="h-6 w-6" />
-        </button>
-        
-        <button
-  onClick={handleLogout}
-  className="px-3 py-2 text-sm rounded-lg transition-all duration-300 shadow-lg hover:scale-105"
-  style={{
-    background: '#ea580c !important',
-    backgroundColor: '#ea580c !important',
-    border: '2px solid #ea580c !important',
-    borderColor: '#ea580c !important',
-    color: 'white !important',
-    fontWeight: 'bold',
-    zIndex: 1000,
-    position: 'relative'
-  }}
->
-  Logout
-</button>
-        <div 
-          className="w-10 h-10 rounded-full flex items-center justify-center font-bold shadow-lg transition-all duration-300 cursor-pointer hover:scale-110"
-          style={{
-            background: 'linear-gradient(45deg, #f59e0b, #d97706)',
-            border: '2px solid #f59e0b',
-            color: 'white',
-            fontWeight: 'bold',
-            zIndex: 1000,
-            position: 'relative'
-          }}
-        >
-          {user?.username?.slice(0, 2).toUpperCase() || 'YU'}
+
+        {/* Right: Settings, Logout, User */}
+        <div className="flex items-center space-x-4 flex-shrink-0">
+          <button className="p-2.5 text-slate-300 hover:text-white transition-colors duration-200 hover:bg-slate-800/50 rounded-lg">
+            <Settings className="h-5 w-5" />
+          </button>
+          
+          <button
+            onClick={handleLogout}
+            className="px-4 py-2.5 text-sm rounded-lg transition-all duration-200 hover:scale-105 bg-slate-800/80 text-white border-2 border-amber-600/50 hover:border-amber-500 font-semibold hover:shadow-lg"
+          >
+            Logout
+          </button>
+          
+          <div 
+            className="w-10 h-10 rounded-full flex items-center justify-center font-bold shadow-lg transition-all duration-200 cursor-pointer hover:scale-110 hover:shadow-xl"
+            style={{
+              background: 'linear-gradient(45deg, #f59e0b, #d97706)',
+              border: '2px solid #f59e0b',
+              color: 'white',
+              fontWeight: 'bold',
+              zIndex: 1000,
+              position: 'relative'
+            }}
+          >
+            {user?.username?.slice(0, 2).toUpperCase() || 'YU'}
+          </div>
         </div>
       </div>
     </div>
@@ -312,6 +329,8 @@ const Header = React.memo(({
 ));
 
 // Move PostCreator outside to prevent re-creation - THIS FIXES THE TYPING ISSUE
+// Updated PostCreator component - replace the existing one in your App.js
+// Replace your existing PostCreator component (around line 306) with this:
 const PostCreator = React.memo(({ 
   user, 
   newPost, 
@@ -320,62 +339,176 @@ const PostCreator = React.memo(({
   loading, 
   fileInputRef, 
   handleFileUpload 
-}) => (
-  <div className="bg-gradient-to-r from-slate-900/60 to-zinc-900/60 backdrop-blur-md rounded-2xl p-6 border border-slate-600/40 mb-6">
-    <div className="flex space-x-4">
-      <div className="w-12 h-12 bg-gradient-to-r from-slate-600 to-zinc-600 rounded-full flex items-center justify-center text-white font-semibold">
-        {user?.username?.slice(0, 2).toUpperCase() || 'YU'}
-      </div>
-      <div className="flex-1">
-        <textarea
-          value={newPost}
-          onChange={(e) => setNewPost(e.target.value)}
-          placeholder="Share your thoughts..."
-          className="w-full p-4 bg-black/40 border border-slate-600/50 rounded-xl text-white placeholder-slate-300 resize-none focus:outline-none focus:ring-2 focus:ring-slate-400"
-          rows="3"
-        />
-        <div className="flex flex-col md:flex-row items-start md:items-center justify-between mt-4 space-y-4 md:space-y-0">
-          <div className="flex flex-wrap gap-2">
+}) => {
+  // Add state for file uploads
+  const [uploadState, setUploadState] = useState({
+    pdf: false,
+    audio: false,
+    video: false,
+    photo: false
+  });
+
+  // Create refs for each file input
+  const pdfInputRef = useRef(null);
+  const audioInputRef = useRef(null);
+  const videoInputRef = useRef(null);
+  const photoInputRef = useRef(null);
+
+  // Handle file selection for each type
+  const handleFileSelect = (type, files) => {
+    setUploadState(prev => ({
+      ...prev,
+      [type]: files && files.length > 0
+    }));
+    if (handleFileUpload) {
+      handleFileUpload(files);
+    }
+  };
+
+  // Check if post should be enabled (has text OR any file)
+  const hasContent = newPost.trim() || 
+                    uploadState.pdf || 
+                    uploadState.audio || 
+                    uploadState.video || 
+                    uploadState.photo;
+
+  return (
+    <div className="bg-gradient-to-r from-slate-900/60 to-zinc-900/60 backdrop-blur-md rounded-2xl p-6 border border-slate-600/40 mb-6">
+      <div className="flex space-x-4">
+        <div className="w-12 h-12 bg-gradient-to-r from-slate-600 to-zinc-600 rounded-full flex items-center justify-center text-white font-semibold">
+          {user?.username?.slice(0, 2).toUpperCase() || 'YU'}
+        </div>
+        <div className="flex-1">
+          <textarea
+            value={newPost}
+            onChange={(e) => setNewPost(e.target.value)}
+            placeholder="Share your thoughts..."
+            className="w-full p-4 bg-black/40 border border-slate-600/50 rounded-xl text-white placeholder-slate-300 resize-none focus:outline-none focus:ring-2 focus:ring-slate-400"
+            rows="3"
+          />
+          
+          <div className="mt-2 flex justify-end">
             <button
-              onClick={() => fileInputRef.current?.click()}
-              className="flex items-center space-x-2 px-3 py-2 bg-slate-700/60 rounded-lg text-slate-300 hover:bg-slate-700 transition-colors border-2 border-amber-600/50 hover:border-amber-500 text-sm"
+              onClick={handlePost}
+              disabled={!hasContent || loading}
+              className={`flex items-center justify-center space-x-2 px-6 py-3 rounded-lg transition-colors border-2 text-base font-semibold ${
+                hasContent && !loading
+                  ? 'bg-slate-700/60 text-slate-300 hover:bg-slate-700 border-amber-600/50 hover:border-amber-500 cursor-pointer'
+                  : 'bg-slate-700/30 text-slate-500 border-amber-600/30 cursor-not-allowed opacity-50'
+              }`}
             >
-              <Image className="h-4 w-4" />
-              <span>Photo</span>
-            </button>
-            <button className="flex items-center space-x-2 px-3 py-2 bg-slate-700/60 rounded-lg text-slate-300 hover:bg-slate-700 transition-colors border-2 border-amber-600/50 hover:border-amber-500 text-sm">
-              <Video className="h-4 w-4" />
-              <span>Video</span>
-            </button>
-            <button className="flex items-center space-x-2 px-3 py-2 bg-slate-700/60 rounded-lg text-slate-300 hover:bg-slate-700 transition-colors border-2 border-amber-600/50 hover:border-amber-500 text-sm">
-              <Mic className="h-4 w-4" />
-              <span>Audio</span>
-            </button>
-            <button className="flex items-center space-x-2 px-3 py-2 bg-slate-700/60 rounded-lg text-slate-300 hover:bg-slate-700 transition-colors border-2 border-amber-amber-600/50 hover:border-amber-500 text-sm">
-              <FileText className="h-4 w-4" />
-              <span>PDF</span>
+              <span>{loading ? 'Posting...' : 'Post'}</span>
             </button>
           </div>
-          <button
-            onClick={handlePost}
-            disabled={!newPost.trim() || loading}
-            className="px-6 py-2 bg-gradient-to-r from-slate-700 to-zinc-700 text-white rounded-lg hover:scale-105 transform transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed border-2 border-amber-600/70 hover:border-amber-500"
-          >
-            {loading ? 'Posting...' : 'Post Scoop'}
-          </button>
+          
+          <div className="mt-2 pt-2 border-t border-slate-600/30">
+            <div className="flex flex-wrap gap-2 justify-end">
+              <button 
+                onClick={() => pdfInputRef.current?.click()}
+                className={`flex items-center space-x-2 px-3 py-2 rounded-lg transition-colors border-2 text-sm ${
+                  uploadState.pdf
+                    ? 'bg-slate-700/60 text-slate-300 hover:bg-slate-700 border-amber-600/50 hover:border-amber-500'
+                    : 'bg-slate-700/30 text-slate-500 border-amber-600/30 opacity-50 hover:opacity-70'
+                }`}
+              >
+                <FileText className="h-4 w-4" />
+                <span>PDF</span>
+                {uploadState.pdf && (
+                  <div className="w-2 h-2 bg-green-500 rounded-full"></div>
+                )}
+              </button>
+              
+              <button 
+                onClick={() => audioInputRef.current?.click()}
+                className={`flex items-center space-x-2 px-3 py-2 rounded-lg transition-colors border-2 text-sm ${
+                  uploadState.audio
+                    ? 'bg-slate-700/60 text-slate-300 hover:bg-slate-700 border-amber-600/50 hover:border-amber-500'
+                    : 'bg-slate-700/30 text-slate-500 border-amber-600/30 opacity-50 hover:opacity-70'
+                }`}
+              >
+                <Mic className="h-4 w-4" />
+                <span>Audio</span>
+                {uploadState.audio && (
+                  <div className="w-2 h-2 bg-green-500 rounded-full"></div>
+                )}
+              </button>
+              
+              <button 
+                onClick={() => videoInputRef.current?.click()}
+                className={`flex items-center space-x-2 px-3 py-2 rounded-lg transition-colors border-2 text-sm ${
+                  uploadState.video
+                    ? 'bg-slate-700/60 text-slate-300 hover:bg-slate-700 border-amber-600/50 hover:border-amber-500'
+                    : 'bg-slate-700/30 text-slate-500 border-amber-600/30 opacity-50 hover:opacity-70'
+                }`}
+              >
+                <Video className="h-4 w-4" />
+                <span>Video</span>
+                {uploadState.video && (
+                  <div className="w-2 h-2 bg-green-500 rounded-full"></div>
+                )}
+              </button>
+              
+              <button
+                onClick={() => photoInputRef.current?.click()}
+                className={`flex items-center space-x-2 px-3 py-2 rounded-lg transition-colors border-2 text-sm ${
+                  uploadState.photo
+                    ? 'bg-slate-700/60 text-slate-300 hover:bg-slate-700 border-amber-600/50 hover:border-amber-500'
+                    : 'bg-slate-700/30 text-slate-500 border-amber-600/30 opacity-50 hover:opacity-70'
+                }`}
+              >
+                <Image className="h-4 w-4" />
+                <span>Photo</span>
+                {uploadState.photo && (
+                  <div className="w-2 h-2 bg-green-500 rounded-full"></div>
+                )}
+              </button>
+            </div>
+          </div>
         </div>
       </div>
+      
+      {/* Hidden file inputs */}
+      <input
+        ref={pdfInputRef}
+        type="file"
+        accept=".pdf"
+        onChange={(e) => handleFileSelect('pdf', e.target.files)}
+        className="hidden"
+      />
+      <input
+        ref={audioInputRef}
+        type="file"
+        accept="audio/*"
+        onChange={(e) => handleFileSelect('audio', e.target.files)}
+        className="hidden"
+      />
+      <input
+        ref={videoInputRef}
+        type="file"
+        accept="video/*"
+        onChange={(e) => handleFileSelect('video', e.target.files)}
+        className="hidden"
+      />
+      <input
+        ref={photoInputRef}
+        type="file"
+        accept="image/*"
+        onChange={(e) => handleFileSelect('photo', e.target.files)}
+        className="hidden"
+      />
+      
+      {/* Keep the existing file input for backward compatibility */}
+      <input
+        ref={fileInputRef}
+        type="file"
+        multiple
+        accept="image/*,video/*,audio/*,.pdf"
+        onChange={(e) => handleFileUpload(e.target.files)}
+        className="hidden"
+      />
     </div>
-    <input
-      ref={fileInputRef}
-      type="file"
-      multiple
-      accept="image/*,video/*,audio/*,.pdf"
-      onChange={(e) => handleFileUpload(e.target.files)}
-      className="hidden"
-    />
-  </div>
-));
+  );
+});
 
 // Move Post component outside to prevent re-creation
 const Post = React.memo(({ post, user, handleLike, isPublicView = false, onLoginPrompt }) => {
