@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react';
-import { Heart, MessageCircle, Share2, Send, Upload, Image, Video, FileText, Mic, User, Search, Settings, Plus, X } from 'lucide-react';
+import { Heart, MessageCircle, Share2, Send, Upload, Image, Video, FileText, Mic, User, Search, Settings, Plus, X, MoreHorizontal, Flag, Bookmark, Eye } from 'lucide-react';
 
 const API_BASE = window.location.hostname === 'localhost' 
   ? 'http://localhost:3001/api'
@@ -598,107 +598,371 @@ const PostCreator = React.memo(({
 });
 
 // Move Post component outside to prevent re-creation
-const Post = React.memo(({ post, user, handleLike, isPublicView = false, onLoginPrompt }) => {
-  const timeAgo = (date) => {
+// Enhanced Post component with comments, sharing, and more features
+const Post = React.memo(({ post, user, handleLike, handleComment, handleShare, isPublicView = false, onLoginPrompt }) => {
+  const [showComments, setShowComments] = useState(false);
+  const [commentText, setCommentText] = useState('');
+  const [showShareMenu, setShowShareMenu] = useState(false);
+  const [showMoreMenu, setShowMoreMenu] = useState(false);
+  const [isLiking, setIsLiking] = useState(false);
+  const commentInputRef = useRef(null);
+
+  // Enhanced timestamp function
+  const getTimeAgo = (date) => {
     const now = new Date();
     const postDate = new Date(date);
-    const diffInHours = Math.floor((now - postDate) / (1000 * 60 * 60));
+    const diffInMinutes = Math.floor((now - postDate) / (1000 * 60));
     
-    if (diffInHours < 1) return 'Just now';
+    if (diffInMinutes < 1) return 'Just now';
+    if (diffInMinutes < 60) return `${diffInMinutes}m ago`;
+    
+    const diffInHours = Math.floor(diffInMinutes / 60);
     if (diffInHours < 24) return `${diffInHours}h ago`;
-    return `${Math.floor(diffInHours / 24)}d ago`;
+    
+    const diffInDays = Math.floor(diffInHours / 24);
+    if (diffInDays < 7) return `${diffInDays}d ago`;
+    
+    const diffInWeeks = Math.floor(diffInDays / 7);
+    if (diffInWeeks < 4) return `${diffInWeeks}w ago`;
+    
+    return postDate.toLocaleDateString();
   };
 
+  // Enhanced like handler with animation
+  const handleLikeClick = async () => {
+    if (isPublicView) {
+      onLoginPrompt?.();
+      return;
+    }
+    
+    setIsLiking(true);
+    try {
+      await handleLike(post._id);
+    } finally {
+      setTimeout(() => setIsLiking(false), 300);
+    }
+  };
+
+  // Handle comment submission
+  const handleCommentSubmit = () => {
+    if (!commentText.trim()) return;
+    
+    if (isPublicView) {
+      onLoginPrompt?.();
+      return;
+    }
+    
+    handleComment?.(post._id, commentText);
+    setCommentText('');
+  };
+
+  // Handle share click
+  const handleShareClick = () => {
+    if (isPublicView) {
+      onLoginPrompt?.();
+      return;
+    }
+    setShowShareMenu(!showShareMenu);
+  };
+
+  // Check if user liked the post
+  const isLiked = !isPublicView && post.likes?.some(like => 
+    (typeof like === 'string' ? like : like.user || like._id) === (user?._id || user?.id)
+  );
+
+  // Get like count
+  const likeCount = post.likes?.length || 0;
+  const commentCount = post.comments?.length || 0;
+
   return (
-    <div className="bg-gradient-to-r from-slate-900/40 to-zinc-900/40 backdrop-blur-md rounded-2xl p-6 border border-slate-600/30 mb-6 hover:border-slate-500/50 transition-all duration-300">
-      <div className="flex items-start space-x-4">
-        <div className="w-12 h-12 bg-gradient-to-r from-slate-600 to-zinc-600 rounded-full flex items-center justify-center text-white font-semibold text-sm">
-          {post.userId?.username?.slice(0, 2).toUpperCase() || 'UN'}
-        </div>
-        <div className="flex-1">
-          <div className="flex items-center space-x-2 mb-2">
-            <span className="font-semibold text-white">
-              {post.userId?.username || 'Unknown User'}
-            </span>
-            {post.userId?.verified && <span className="text-indigo-400">✓</span>}
-            <span className="text-slate-400 text-sm">
-              {timeAgo(post.createdAt)}
-            </span>
+    <div className="bg-gradient-to-r from-slate-900/40 to-zinc-900/40 backdrop-blur-md rounded-2xl p-6 border border-slate-600/30 mb-6 hover:border-slate-500/50 transition-all duration-300 group">
+      {/* Post Header */}
+      <div className="flex items-start justify-between mb-4">
+        <div className="flex items-start space-x-4">
+          {/* User Avatar */}
+          <div className="w-12 h-12 bg-gradient-to-r from-slate-600 to-zinc-600 rounded-full flex items-center justify-center text-white font-semibold text-sm shadow-lg">
+            {post.userId?.username?.slice(0, 2).toUpperCase() || 'UN'}
           </div>
-          <p className="text-slate-200 mb-4 leading-relaxed">{post.content}</p>
-          {post.mediaFiles && post.mediaFiles.length > 0 && (
-            <div className="mb-4">
-              {post.mediaFiles.map((file, idx) => (
-                <div key={idx} className="mb-2">
-                  {file.type === 'image' && (
-                    <img src={file.url} alt="Post media" className="w-full max-w-md rounded-xl" />
-                  )}
-                  {file.type === 'video' && (
-                    <video controls className="w-full max-w-md rounded-xl">
-                      <source src={file.url} />
-                    </video>
-                  )}
+          
+          {/* User Info & Time */}
+          <div className="flex-1">
+            <div className="flex items-center space-x-2 mb-1">
+              <span className="font-semibold text-white hover:text-slate-200 cursor-pointer">
+                {post.userId?.username || 'Unknown User'}
+              </span>
+              {post.userId?.verified && (
+                <div className="w-5 h-5 bg-gradient-to-r from-blue-500 to-indigo-600 rounded-full flex items-center justify-center">
+                  <span className="text-white text-xs">✓</span>
+                </div>
+              )}
+              <span className="text-slate-400 text-sm">•</span>
+              <span className="text-slate-400 text-sm hover:text-slate-300 cursor-pointer" title={new Date(post.createdAt).toLocaleString()}>
+                {getTimeAgo(post.createdAt)}
+              </span>
+            </div>
+            
+            {/* Transparency Score */}
+            {post.userId?.transparencyScore && (
+              <div className="flex items-center space-x-1">
+                <div className="w-2 h-2 bg-green-500 rounded-full"></div>
+                <span className="text-xs text-slate-500">
+                  {post.userId.transparencyScore}% transparency
+                </span>
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* More Menu */}
+        <div className="relative">
+          <button 
+            onClick={() => setShowMoreMenu(!showMoreMenu)}
+            className="p-2 text-slate-400 hover:text-white hover:bg-slate-700/50 rounded-lg transition-colors opacity-0 group-hover:opacity-100"
+          >
+            <MoreHorizontal className="h-5 w-5" />
+          </button>
+          
+          {showMoreMenu && (
+            <div className="absolute right-0 top-10 bg-slate-800/90 backdrop-blur-md rounded-xl border border-slate-600/50 shadow-xl z-10 min-w-48">
+              <button className="w-full px-4 py-3 text-left text-slate-300 hover:text-white hover:bg-slate-700/50 rounded-t-xl transition-colors flex items-center space-x-2">
+                <Bookmark className="h-4 w-4" />
+                <span>Save Post</span>
+              </button>
+              <button className="w-full px-4 py-3 text-left text-slate-300 hover:text-white hover:bg-slate-700/50 transition-colors flex items-center space-x-2">
+                <Flag className="h-4 w-4" />
+                <span>Report</span>
+              </button>
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* Post Content */}
+      <div className="mb-4">
+        <p className="text-slate-200 leading-relaxed whitespace-pre-wrap">
+          {post.content}
+        </p>
+      </div>
+
+      {/* Media Files */}
+      {post.mediaFiles && post.mediaFiles.length > 0 && (
+        <div className="mb-4 grid gap-2 max-w-2xl">
+          {post.mediaFiles.map((file, idx) => (
+            <div key={idx} className="rounded-xl overflow-hidden border border-slate-600/30">
+              {file.type === 'image' && (
+                <img 
+                  src={file.url} 
+                  alt="Post media" 
+                  className="w-full h-auto max-h-96 object-cover hover:scale-105 transition-transform duration-300 cursor-pointer" 
+                />
+              )}
+              {file.type === 'video' && (
+                <video controls className="w-full h-auto max-h-96 bg-black">
+                  <source src={file.url} />
+                  Your browser does not support video playback.
+                </video>
+              )}
+              {file.type === 'audio' && (
+                <div className="p-4 bg-slate-800/50">
+                  <audio controls className="w-full">
+                    <source src={file.url} />
+                    Your browser does not support audio playback.
+                  </audio>
+                </div>
+              )}
+              {file.type === 'pdf' && (
+                <div className="p-4 bg-slate-800/50 flex items-center space-x-3">
+                  <div className="w-10 h-10 bg-red-500/20 rounded-lg flex items-center justify-center">
+                    <span className="text-red-400 text-sm font-bold">PDF</span>
+                  </div>
+                  <div>
+                    <p className="text-white font-medium">{file.filename}</p>
+                    <p className="text-slate-400 text-sm">{(file.size / 1024 / 1024).toFixed(1)} MB</p>
+                  </div>
+                </div>
+              )}
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* Engagement Stats */}
+      {(likeCount > 0 || commentCount > 0) && (
+        <div className="flex items-center justify-between text-slate-400 text-sm mb-3 pb-3 border-b border-slate-600/30">
+          <div className="flex items-center space-x-4">
+            {likeCount > 0 && (
+              <span className="flex items-center space-x-1">
+                <div className="flex -space-x-1">
+                  <div className="w-5 h-5 bg-gradient-to-r from-red-500 to-pink-500 rounded-full flex items-center justify-center border border-slate-800">
+                    <Heart className="h-3 w-3 text-white" fill="white" />
+                  </div>
+                </div>
+                <span>{likeCount} {likeCount === 1 ? 'like' : 'likes'}</span>
+              </span>
+            )}
+            {commentCount > 0 && (
+              <span>{commentCount} {commentCount === 1 ? 'comment' : 'comments'}</span>
+            )}
+          </div>
+          <div className="flex items-center space-x-1">
+            <Eye className="h-4 w-4" />
+            <span>{Math.floor(Math.random() * 50) + 20} views</span>
+          </div>
+        </div>
+      )}
+
+      {/* Action Buttons */}
+      <div className="flex items-center justify-between">
+        <div className="flex items-center space-x-1">
+          {/* Like Button */}
+          <button 
+            onClick={handleLikeClick}
+            className={`flex items-center space-x-2 px-3 py-2 rounded-lg transition-all duration-200 ${
+              isLiked 
+                ? 'text-red-400 bg-red-500/10 hover:bg-red-500/20' 
+                : 'text-slate-400 hover:text-red-400 hover:bg-red-500/10'
+            } ${isLiking ? 'scale-110' : ''}`}
+            title={isPublicView ? "Sign up to like posts" : "Like this post"}
+          >
+            <Heart 
+              className={`h-5 w-5 transition-all duration-200 ${isLiking ? 'scale-125' : ''}`} 
+              fill={isLiked ? 'currentColor' : 'none'} 
+            />
+            <span className="font-medium">{likeCount || 'Like'}</span>
+          </button>
+
+          {/* Comment Button */}
+          <button 
+            onClick={() => {
+              if (isPublicView) {
+                onLoginPrompt?.();
+              } else {
+                setShowComments(!showComments);
+                setTimeout(() => commentInputRef.current?.focus(), 100);
+              }
+            }}
+            className="flex items-center space-x-2 px-3 py-2 rounded-lg text-slate-400 hover:text-indigo-400 hover:bg-indigo-500/10 transition-all duration-200"
+            title={isPublicView ? "Sign up to comment" : "Comment on this post"}
+          >
+            <MessageCircle className="h-5 w-5" />
+            <span className="font-medium">{commentCount || 'Comment'}</span>
+          </button>
+
+          {/* Share Button */}
+          <div className="relative">
+            <button 
+              onClick={handleShareClick}
+              className="flex items-center space-x-2 px-3 py-2 rounded-lg text-slate-400 hover:text-green-400 hover:bg-green-500/10 transition-all duration-200"
+              title={isPublicView ? "Sign up to share" : "Share this post"}
+            >
+              <Share2 className="h-5 w-5" />
+              <span className="font-medium">Share</span>
+            </button>
+
+            {/* Share Menu */}
+            {showShareMenu && (
+              <div className="absolute left-0 top-12 bg-slate-800/90 backdrop-blur-md rounded-xl border border-slate-600/50 shadow-xl z-10 min-w-48">
+                <button className="w-full px-4 py-3 text-left text-slate-300 hover:text-white hover:bg-slate-700/50 rounded-t-xl transition-colors">
+                  Copy Link
+                </button>
+                <button className="w-full px-4 py-3 text-left text-slate-300 hover:text-white hover:bg-slate-700/50 transition-colors">
+                  Share to Feed
+                </button>
+                <button className="w-full px-4 py-3 text-left text-slate-300 hover:text-white hover:bg-slate-700/50 rounded-b-xl transition-colors">
+                  Send Message
+                </button>
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* Public View Notice */}
+        {isPublicView && (
+          <button
+            onClick={onLoginPrompt}
+            className="text-xs text-slate-500 hover:text-slate-400 transition-colors"
+          >
+            Join to interact →
+          </button>
+        )}
+      </div>
+
+      {/* Comments Section */}
+      {showComments && !isPublicView && (
+        <div className="mt-4 pt-4 border-t border-slate-600/30 space-y-4">
+          {/* Comment Input */}
+          <div className="flex space-x-3">
+            <div className="w-8 h-8 bg-gradient-to-r from-slate-600 to-zinc-600 rounded-full flex items-center justify-center text-white font-semibold text-xs">
+              {user?.username?.slice(0, 2).toUpperCase() || 'YU'}
+            </div>
+            <div className="flex-1">
+              <div className="flex space-x-2">
+                <input
+                  ref={commentInputRef}
+                  type="text"
+                  value={commentText}
+                  onChange={(e) => setCommentText(e.target.value)}
+                  onKeyPress={(e) => e.key === 'Enter' && handleCommentSubmit()}
+                  placeholder="Write a comment..."
+                  className="flex-1 px-4 py-2 bg-black/40 border border-slate-600/50 rounded-full text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-slate-400 focus:border-slate-400"
+                />
+                <button
+                  onClick={handleCommentSubmit}
+                  disabled={!commentText.trim()}
+                  className="px-4 py-2 bg-gradient-to-r from-slate-700 to-zinc-700 text-white rounded-full hover:scale-105 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  <Send className="h-4 w-4" />
+                </button>
+              </div>
+            </div>
+          </div>
+
+          {/* Existing Comments */}
+          {post.comments && post.comments.length > 0 && (
+            <div className="space-y-3">
+              {post.comments.map((comment, idx) => (
+                <div key={idx} className="flex space-x-3">
+                  <div className="w-8 h-8 bg-gradient-to-r from-slate-600 to-zinc-600 rounded-full flex items-center justify-center text-white font-semibold text-xs">
+                    {comment.user?.username?.slice(0, 2).toUpperCase() || comment.author?.slice(0, 2).toUpperCase() || 'UN'}
+                  </div>
+                  <div className="flex-1">
+                    <div className="bg-slate-800/50 rounded-2xl px-4 py-2">
+                      <div className="flex items-center space-x-2 mb-1">
+                        <span className="font-medium text-white text-sm">
+                          {comment.user?.username || comment.author || 'Unknown User'}
+                        </span>
+                        <span className="text-slate-500 text-xs">
+                          {getTimeAgo(comment.createdAt || new Date())}
+                        </span>
+                      </div>
+                      <p className="text-slate-200 text-sm">{comment.content}</p>
+                    </div>
+                    <div className="flex items-center space-x-4 mt-1 px-4">
+                      <button className="text-xs text-slate-500 hover:text-slate-400 transition-colors">
+                        Like
+                      </button>
+                      <button className="text-xs text-slate-500 hover:text-slate-400 transition-colors">
+                        Reply
+                      </button>
+                    </div>
+                  </div>
                 </div>
               ))}
             </div>
           )}
-          <div className="flex items-center space-x-4 text-slate-400">
-            {isPublicView ? (
-              // Read-only view for non-logged-in users
-              <>
-                <button 
-                  onClick={onLoginPrompt}
-                  className="flex items-center space-x-2 hover:text-red-400 transition-colors group"
-                  title="Sign up to like posts"
-                >
-                  <Heart className="h-5 w-5" fill="none" />
-                  <span>{post.likes?.length || 0}</span>
-                  <span className="text-xs opacity-0 group-hover:opacity-100 transition-opacity">Sign up to like</span>
-                </button>
-                <button 
-                  onClick={onLoginPrompt}
-                  className="flex items-center space-x-2 hover:text-indigo-400 transition-colors group"
-                  title="Sign up to comment"
-                >
-                  <MessageCircle className="h-5 w-5" />
-                  <span>{post.comments?.length || 0}</span>
-                  <span className="text-xs opacity-0 group-hover:opacity-100 transition-opacity">Sign up to comment</span>
-                </button>
-                <button 
-                  onClick={onLoginPrompt}
-                  className="flex items-center space-x-2 hover:text-slate-300 transition-colors group"
-                  title="Sign up to share"
-                >
-                  <Share2 className="h-5 w-5" />
-                  <span>Share</span>
-                  <span className="text-xs opacity-0 group-hover:opacity-100 transition-opacity">Sign up to share</span>
-                </button>
-              </>
-            ) : (
-              // Interactive view for logged-in users
-              <>
-                <button 
-                  onClick={() => handleLike(post._id)}
-                  className={`flex items-center space-x-2 hover:text-red-400 transition-colors ${
-                    post.likes.includes(user?._id || user?.id || 'demo-user') ? 'text-red-400' : ''
-                  }`}
-                >
-                  <Heart className="h-5 w-5" fill={post.likes.includes(user?._id || user?.id || 'demo-user') ? 'currentColor' : 'none'} />
-                  <span>{post.likes?.length || 0}</span>
-                </button>
-                <button className="flex items-center space-x-2 hover:text-indigo-400 transition-colors">
-                  <MessageCircle className="h-5 w-5" />
-                  <span>{post.comments?.length || 0}</span>
-                </button>
-                <button className="flex items-center space-x-2 hover:text-slate-300 transition-colors">
-                  <Share2 className="h-5 w-5" />
-                  <span>Share</span>
-                </button>
-              </>
-            )}
-          </div>
         </div>
-      </div>
+      )}
+
+      {/* Click outside handlers */}
+      {(showShareMenu || showMoreMenu) && (
+        <div 
+          className="fixed inset-0 z-0" 
+          onClick={() => {
+            setShowShareMenu(false);
+            setShowMoreMenu(false);
+          }}
+        />
+      )}
     </div>
   );
 });
@@ -714,6 +978,8 @@ const Feed = React.memo(({
   handleFileUpload, 
   posts, 
   handleLike,
+  handleComment,
+  handleShare,
   feedType,
   setFeedType,
   isPublicView = false,
@@ -872,7 +1138,9 @@ const Feed = React.memo(({
             key={post._id} 
             post={post} 
             user={user} 
-            handleLike={handleLike} 
+            handleLike={handleLike}
+            handleComment={handleComment}
+            handleShare={handleShare}
             isPublicView={isPublicView}
             onLoginPrompt={onLoginPrompt}
           />
@@ -1790,6 +2058,49 @@ const handleLogin = async () => {
     setChatMessage('');
   };
 
+    // Enhanced comment handler
+  const handleComment = useCallback((postId, commentText) => {
+    const newComment = {
+      user: { username: user?.username || 'You', _id: user?._id || user?.id },
+      content: commentText,
+      createdAt: new Date()
+    };
+
+    // Update posts state
+    const updatePostComments = (postsArray) => {
+      return postsArray.map(post => {
+        if (post._id === postId) {
+          return {
+            ...post,
+            comments: [...(post.comments || []), newComment]
+          };
+        }
+        return post;
+      });
+    };
+
+    setPosts(updatePostComments);
+    setAllPosts(updatePostComments);
+
+    // Optional: Send to backend
+    if (apiStatus === 'connected' && token !== 'demo-token') {
+      apiCall(`/posts/${postId}/comments`, {
+        method: 'POST',
+        body: JSON.stringify({ content: commentText })
+      }, token).catch(console.error);
+    }
+  }, [user, apiStatus, token, setPosts, setAllPosts, apiCall]);
+
+  // Enhanced share handler
+  const handleShare = useCallback((postId) => {
+    // Copy link to clipboard
+    const postUrl = `${window.location.origin}/post/${postId}`;
+    navigator.clipboard.writeText(postUrl).then(() => {
+      console.log('Link copied to clipboard!');
+      // You could add a toast notification here
+    }).catch(console.error);
+  }, []);
+
   // Handle public browsing
   const handleBrowsePublic = () => {
     setIsPublicBrowsing(true);
@@ -1842,6 +2153,8 @@ const handleLogin = async () => {
               handleFileUpload={() => {}}
               posts={allPosts}
               handleLike={() => {}}
+              handleComment={() => {}}
+              handleShare={() => {}}
               feedType="public"
               setFeedType={() => {}}
               isPublicView={true}
