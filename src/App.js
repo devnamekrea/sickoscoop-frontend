@@ -1645,118 +1645,22 @@ const SickoScoopApp = () => {
         }
       }
 
-      // Load mock data for demo
-      loadMockData();
+      // Production: Start with empty state
+setAllPosts([]);
+setPosts([]);
+setChats([]);
+setApiStatus(isApiConnected ? 'connected' : 'disconnected');
     };
 
     initializeApp();
   }, [isClient]);
 
   const loadMockData = () => {
-    const mockPosts = [
-      {
-        _id: '1',
-        userId: { username: 'Aurora Dreams', verified: true, _id: 'user1' },
-        content: 'Embracing transparency in our digital connections. This platform truly feels different! 🌟',
-        likes: ['user2', 'user3', 'user4'],
-        comments: [
-          { user: 'Digital Phoenix', content: 'Absolutely love this approach!' }
-        ],
-        createdAt: new Date(Date.now() - 2 * 60 * 60 * 1000)
-      },
-      {
-        _id: '2', 
-        userId: { username: 'Digital Phoenix', verified: false, _id: 'user2' },
-        content: 'Finally found a platform where genuine conversation thrives! The sophisticated design here creates the perfect atmosphere for authentic dialogue. 💫',
-        likes: ['user1', 'user3'],
-        comments: [],
-        createdAt: new Date(Date.now() - 4 * 60 * 60 * 1000)
-      },
-      {
-        _id: '3',
-        userId: { username: 'Cosmic Wanderer', verified: true, _id: 'user3' },
-        content: 'The anti-stalker protection here is revolutionary. Finally, a safe space for real connections! 🛡️',
-        likes: ['user1', 'user2', 'user4', 'user5'],
-        comments: [
-          { user: 'Aurora Dreams', content: 'Privacy is everything!' }
-        ],
-        createdAt: new Date(Date.now() - 6 * 60 * 60 * 1000)
-      },
-      {
-        _id: '4',
-        userId: { username: 'Tech Sage', verified: true, _id: 'user4' },
-        content: 'Just shared my thoughts on digital privacy in 2025. The landscape is evolving rapidly, and platforms like this are leading the charge! 🚀',
-        likes: ['user1', 'user3'],
-        comments: [],
-        createdAt: new Date(Date.now() - 8 * 60 * 60 * 1000)
-      },
-      {
-        _id: '5',
-        userId: { username: 'Privacy Advocate', verified: false, _id: 'user5' },
-        content: 'Love how this platform puts user safety first. No more worrying about unwanted attention or harassment. This is the future of social media! 💪',
-        likes: ['user1', 'user2', 'user3'],
-        comments: [
-          { user: 'Aurora Dreams', content: 'Couldn\'t agree more!' },
-          { user: 'Tech Sage', content: 'Safety should always be priority #1' }
-        ],
-        createdAt: new Date(Date.now() - 10 * 60 * 60 * 1000)
-      },
-      {
-        _id: '6',
-        userId: { username: 'Transparency Truth', verified: true, _id: 'user6' },
-        content: 'Been testing this platform for weeks. The commitment to genuine discourse without anonymity trolls is refreshing. Quality over quantity! ✨',
-        likes: ['user2', 'user4', 'user5'],
-        comments: [],
-        createdAt: new Date(Date.now() - 12 * 60 * 60 * 1000)
-      },
-      {
-        _id: '7',
-        userId: { username: 'Social Pioneer', verified: false, _id: 'user7' },
-        content: 'The verification system here strikes the perfect balance. You know who you\'re talking to, but privacy is still protected. Ingenious design! 🎯',
-        likes: ['user1', 'user3', 'user6'],
-        comments: [
-          { user: 'Digital Phoenix', content: 'The verification process was so smooth!' }
-        ],
-        createdAt: new Date(Date.now() - 14 * 60 * 60 * 1000)
-      },
-      {
-        _id: '8',
-        userId: { username: 'Community Builder', verified: true, _id: 'user8' },
-        content: 'Hosting my first SickoScoop community event next week! Who\'s interested in joining a discussion about ethical social media? 🤝',
-        likes: ['user2', 'user5', 'user7'],
-        comments: [
-          { user: 'Privacy Advocate', content: 'Count me in!' },
-          { user: 'Tech Sage', content: 'This sounds amazing!' }
-        ],
-        createdAt: new Date(Date.now() - 16 * 60 * 60 * 1000)
-      }
-    ];
-    
-    setAllPosts(mockPosts);
-    updateDisplayedPosts(mockPosts, feedType, user);
-
-    const mockChats = [
-      {
-        _id: '1',
-        participants: [{ username: 'Aurora Dreams' }],
-        lastMessage: { content: 'Hey! Love the transparency here!' },
-        isOnline: true
-      },
-      {
-        _id: '2',
-        participants: [{ username: 'Digital Phoenix' }],
-        lastMessage: { content: 'Thanks for the authenticity tip' },
-        isOnline: true
-      },
-      {
-        _id: '3',
-        participants: [{ username: 'Cosmic Wanderer' }],
-        lastMessage: { content: 'The privacy features are amazing!' },
-        isOnline: false
-      }
-    ];
-    setChats(mockChats);
-  };
+  // Production: Start with empty arrays - real data comes from backend
+  setAllPosts([]);
+  setPosts([]);
+  setChats([]);
+};
 
   // Helper function to update displayed posts based on feed type
   const updateDisplayedPosts = (allPostsData, currentFeedType, currentUser) => {
@@ -1765,21 +1669,13 @@ const SickoScoopApp = () => {
       setPosts(allPostsData);
     } else {
       // Show only user's posts and posts from followed users for personal feed
-      // For demo, we'll show user's posts + a few select posts
       const userPosts = allPostsData.filter(post => 
         post.userId?._id === currentUser?._id || 
         post.userId?.username === currentUser?.username
       );
       
-      // Add some "followed" users' posts for demo
-      const followedPosts = allPostsData.filter(post => 
-        ['Aurora Dreams', 'Tech Sage', 'Privacy Advocate'].includes(post.userId?.username)
-      ).slice(0, 3);
-      
-      const personalFeedPosts = [...userPosts, ...followedPosts]
-        .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
-      
-      setPosts(personalFeedPosts);
+      // Show only user's own posts for personal feed (no fake followed users)
+      setPosts(userPosts.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt)));
     }
   };
 
@@ -1934,27 +1830,7 @@ const handleLogin = async () => {
     console.error('❌ Login error:', error);
     
     // Enhanced demo login fallback
-    if (loginForm.email.toLowerCase().trim() === 'demo@sickoscoop.com' && loginForm.password === 'demo') {
-      console.log('🎭 Using demo login');
-      const demoUser = { 
-        _id: 'demo-user',
-        username: 'Demo User', 
-        email: 'demo@sickoscoop.com', 
-        verified: true 
-      };
-      setUser(demoUser);
-      setToken('demo-token');
-      setStorageItem('authToken', 'demo-token');
-      setStorageItem('userData', JSON.stringify(demoUser));
-      setIsLoggedIn(true);
-      setCurrentView('feed');
-      setLoginForm({ email: '', password: '' });
-      setApiStatus('disconnected');
-      setError('');
-      loadMockData();
-    } else {
-      setError(error.message || 'Login failed. Please check your credentials or try demo@sickoscoop.com / demo');
-    }
+    setError(error.message || 'Login failed. Please check your credentials and try again.');
   } finally {
     setLoading(false);
   }
@@ -2042,10 +1918,6 @@ const handleLogin = async () => {
     setError('');
     setFeedType('public'); // Reset to public feed
     
-    // Reload mock data for demo
-    setTimeout(() => {
-      loadMockData();
-    }, 100);
   };
 
   const handlePost = async () => {
