@@ -2086,12 +2086,39 @@ const handleLogin = async () => {
   }, []);
 
   // Handle public browsing
-  const handleBrowsePublic = () => {
-    setIsPublicBrowsing(true);
-    setCurrentView('publicFeed');
-    // Load mock data for public browsing
-    loadMockData();
-  };
+  // Handle public browsing
+const handleBrowsePublic = async () => {
+  setIsPublicBrowsing(true);
+  setCurrentView('publicFeed');
+  
+  // Actually load real posts from API instead of mock data
+  try {
+    console.log('🌐 Loading public posts for browsing...');
+    
+    const response = await fetch(`${API_BASE}/posts/public`);
+    if (!response.ok) {
+      throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+    }
+    
+    const publicPostsData = await response.json();
+    console.log('✅ Public posts loaded:', publicPostsData.length);
+    
+    if (Array.isArray(publicPostsData) && publicPostsData.length > 0) {
+      setAllPosts(publicPostsData);
+      setPosts(publicPostsData); // Show all public posts in public view
+      console.log('✅ Posts set in state:', publicPostsData.length);
+    } else {
+      console.log('⚠️ No public posts found');
+      setAllPosts([]);
+      setPosts([]);
+    }
+  } catch (error) {
+    console.error('❌ Error loading public posts:', error);
+    // Fallback to empty state
+    setAllPosts([]);
+    setPosts([]);
+  }
+};
 
   // Handle login prompt from public view
   const handleLoginPrompt = () => {
