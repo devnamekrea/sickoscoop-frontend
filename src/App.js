@@ -599,11 +599,15 @@ const PostCreator = React.memo(({
 
 // Move Post component outside to prevent re-creation
 // Enhanced Post component with comments, sharing, and more features
+// Enhanced Post component with "Who Liked" functionality
+// Replace your existing Post component in App.js with this updated version
+
 const Post = React.memo(({ post, user, handleLike, handleComment, handleShare, isPublicView = false, onLoginPrompt }) => {
   const [showComments, setShowComments] = useState(false);
   const [commentText, setCommentText] = useState('');
   const [showShareMenu, setShowShareMenu] = useState(false);
   const [showMoreMenu, setShowMoreMenu] = useState(false);
+  const [showWhoLiked, setShowWhoLiked] = useState(false); // New state for who liked modal
   const [isLiking, setIsLiking] = useState(false);
   const commentInputRef = useRef(null);
 
@@ -665,305 +669,413 @@ const Post = React.memo(({ post, user, handleLike, handleComment, handleShare, i
     setShowShareMenu(!showShareMenu);
   };
 
+  // Handle who liked click
+  const handleWhoLikedClick = () => {
+    if (isPublicView) {
+      onLoginPrompt?.();
+      return;
+    }
+    setShowWhoLiked(true);
+  };
+
   // Check if user liked the post
   const isLiked = !isPublicView && post.likes?.some(like => 
     (typeof like === 'string' ? like : like.user || like._id) === (user?._id || user?.id)
   );
 
-  // Get like count
+  // Get like count and users who liked
   const likeCount = post.likes?.length || 0;
   const commentCount = post.comments?.length || 0;
 
+  // Get users who liked (for the modal)
+  const usersWhoLiked = React.useMemo(() => {
+    if (!post.likes || post.likes.length === 0) return [];
+    
+    // Handle different like data structures
+    return post.likes.map((like, index) => {
+      if (typeof like === 'string') {
+        // If it's just a user ID, create a mock user object
+        return {
+          _id: like,
+          username: `User ${index + 1}`,
+          avatar: '👤',
+          verified: false
+        };
+      } else if (like.user) {
+        // If it has a user object
+        return {
+          _id: like.user._id || like.user,
+          username: like.user.username || `User ${index + 1}`,
+          avatar: like.user.avatar || '👤',
+          verified: like.user.verified || false
+        };
+      } else {
+        // Direct user object
+        return {
+          _id: like._id || `user-${index}`,
+          username: like.username || `User ${index + 1}`,
+          avatar: like.avatar || '👤',
+          verified: like.verified || false
+        };
+      }
+    });
+  }, [post.likes]);
+
   return (
-    <div className="bg-gradient-to-r from-slate-900/40 to-zinc-900/40 backdrop-blur-md rounded-2xl p-6 border border-slate-600/30 mb-6 hover:border-slate-500/50 transition-all duration-300 group">
-      {/* Post Header */}
-      <div className="flex items-start justify-between mb-4">
-        <div className="flex items-start space-x-4">
-          {/* User Avatar */}
-          <div className="w-12 h-12 bg-gradient-to-r from-slate-600 to-zinc-600 rounded-full flex items-center justify-center text-white font-semibold text-sm shadow-lg">
-            {post.userId?.username?.slice(0, 2).toUpperCase() || 'UN'}
-          </div>
-          
-          {/* User Info & Time */}
-          <div className="flex-1">
-            <div className="flex items-center space-x-2 mb-1">
-              <span className="font-semibold text-white hover:text-slate-200 cursor-pointer">
-                {post.userId?.username || 'Unknown User'}
-              </span>
-              {post.userId?.verified && (
-                <div className="w-5 h-5 bg-gradient-to-r from-blue-500 to-indigo-600 rounded-full flex items-center justify-center">
-                  <span className="text-white text-xs">✓</span>
-                </div>
-              )}
-              <span className="text-slate-400 text-sm">•</span>
-              <span className="text-slate-400 text-sm hover:text-slate-300 cursor-pointer" title={new Date(post.createdAt).toLocaleString()}>
-                {getTimeAgo(post.createdAt)}
-              </span>
+    <>
+      <div className="bg-gradient-to-r from-slate-900/40 to-zinc-900/40 backdrop-blur-md rounded-2xl p-6 border border-slate-600/30 mb-6 hover:border-slate-500/50 transition-all duration-300 group">
+        {/* Post Header */}
+        <div className="flex items-start justify-between mb-4">
+          <div className="flex items-start space-x-4">
+            {/* User Avatar */}
+            <div className="w-12 h-12 bg-gradient-to-r from-slate-600 to-zinc-600 rounded-full flex items-center justify-center text-white font-semibold text-sm shadow-lg">
+              {post.userId?.username?.slice(0, 2).toUpperCase() || 'UN'}
             </div>
             
-            {/* Transparency Score */}
-            {post.userId?.transparencyScore && (
-              <div className="flex items-center space-x-1">
-                <div className="w-2 h-2 bg-green-500 rounded-full"></div>
-                <span className="text-xs text-slate-500">
-                  {post.userId.transparencyScore}% transparency
+            {/* User Info & Time */}
+            <div className="flex-1">
+              <div className="flex items-center space-x-2 mb-1">
+                <span className="font-semibold text-white hover:text-slate-200 cursor-pointer">
+                  {post.userId?.username || 'Unknown User'}
+                </span>
+                {post.userId?.verified && (
+                  <div className="w-5 h-5 bg-gradient-to-r from-blue-500 to-indigo-600 rounded-full flex items-center justify-center">
+                    <span className="text-white text-xs">✓</span>
+                  </div>
+                )}
+                <span className="text-slate-400 text-sm">•</span>
+                <span className="text-slate-400 text-sm hover:text-slate-300 cursor-pointer" title={new Date(post.createdAt).toLocaleString()}>
+                  {getTimeAgo(post.createdAt)}
                 </span>
               </div>
-            )}
-          </div>
-        </div>
-
-        {/* More Menu */}
-        <div className="relative">
-          <button 
-            onClick={() => setShowMoreMenu(!showMoreMenu)}
-            className="p-2 text-slate-400 hover:text-white hover:bg-slate-700/50 rounded-lg transition-colors opacity-0 group-hover:opacity-100"
-          >
-            <MoreHorizontal className="h-5 w-5" />
-          </button>
-          
-          {showMoreMenu && (
-            <div className="absolute right-0 top-10 bg-slate-800/90 backdrop-blur-md rounded-xl border border-slate-600/50 shadow-xl z-10 min-w-48">
-              <button className="w-full px-4 py-3 text-left text-slate-300 hover:text-white hover:bg-slate-700/50 rounded-t-xl transition-colors flex items-center space-x-2">
-                <Bookmark className="h-4 w-4" />
-                <span>Save Post</span>
-              </button>
-              <button className="w-full px-4 py-3 text-left text-slate-300 hover:text-white hover:bg-slate-700/50 transition-colors flex items-center space-x-2">
-                <Flag className="h-4 w-4" />
-                <span>Report</span>
-              </button>
-            </div>
-          )}
-        </div>
-      </div>
-
-      {/* Post Content */}
-      <div className="mb-4">
-        <p className="text-slate-200 leading-relaxed whitespace-pre-wrap">
-          {post.content}
-        </p>
-      </div>
-
-      {/* Media Files */}
-      {post.mediaFiles && post.mediaFiles.length > 0 && (
-        <div className="mb-4 grid gap-2 max-w-2xl">
-          {post.mediaFiles.map((file, idx) => (
-            <div key={idx} className="rounded-xl overflow-hidden border border-slate-600/30">
-              {file.type === 'image' && (
-                <img 
-                  src={file.url} 
-                  alt="Post media" 
-                  className="w-full h-auto max-h-96 object-cover hover:scale-105 transition-transform duration-300 cursor-pointer" 
-                />
-              )}
-              {file.type === 'video' && (
-                <video controls className="w-full h-auto max-h-96 bg-black">
-                  <source src={file.url} />
-                  Your browser does not support video playback.
-                </video>
-              )}
-              {file.type === 'audio' && (
-                <div className="p-4 bg-slate-800/50">
-                  <audio controls className="w-full">
-                    <source src={file.url} />
-                    Your browser does not support audio playback.
-                  </audio>
-                </div>
-              )}
-              {file.type === 'pdf' && (
-                <div className="p-4 bg-slate-800/50 flex items-center space-x-3">
-                  <div className="w-10 h-10 bg-red-500/20 rounded-lg flex items-center justify-center">
-                    <span className="text-red-400 text-sm font-bold">PDF</span>
-                  </div>
-                  <div>
-                    <p className="text-white font-medium">{file.filename}</p>
-                    <p className="text-slate-400 text-sm">{(file.size / 1024 / 1024).toFixed(1)} MB</p>
-                  </div>
+              
+              {/* Transparency Score */}
+              {post.userId?.transparencyScore && (
+                <div className="flex items-center space-x-1">
+                  <div className="w-2 h-2 bg-green-500 rounded-full"></div>
+                  <span className="text-xs text-slate-500">
+                    {post.userId.transparencyScore}% transparency
+                  </span>
                 </div>
               )}
             </div>
-          ))}
-        </div>
-      )}
-
-      {/* Engagement Stats */}
-      {(likeCount > 0 || commentCount > 0) && (
-        <div className="flex items-center justify-between text-slate-400 text-sm mb-3 pb-3 border-b border-slate-600/30">
-          <div className="flex items-center space-x-4">
-            {likeCount > 0 && (
-              <span className="flex items-center space-x-1">
-                <div className="flex -space-x-1">
-                  <div className="w-5 h-5 bg-gradient-to-r from-red-500 to-pink-500 rounded-full flex items-center justify-center border border-slate-800">
-                    <Heart className="h-3 w-3 text-white" fill="white" />
-                  </div>
-                </div>
-                <span>{likeCount} {likeCount === 1 ? 'like' : 'likes'}</span>
-              </span>
-            )}
-            {commentCount > 0 && (
-              <span>{commentCount} {commentCount === 1 ? 'comment' : 'comments'}</span>
-            )}
           </div>
-          <div className="flex items-center space-x-1">
-            <Eye className="h-4 w-4" />
-            <span>{Math.floor(Math.random() * 50) + 20} views</span>
-          </div>
-        </div>
-      )}
 
-      {/* Action Buttons */}
-      <div className="flex items-center justify-between">
-        <div className="flex items-center space-x-1">
-          {/* Like Button */}
-          <button 
-            onClick={handleLikeClick}
-            className={`flex items-center space-x-2 px-3 py-2 rounded-lg transition-all duration-200 ${
-              isLiked 
-                ? 'text-red-400 bg-red-500/10 hover:bg-red-500/20' 
-                : 'text-slate-400 hover:text-red-400 hover:bg-red-500/10'
-            } ${isLiking ? 'scale-110' : ''}`}
-            title={isPublicView ? "Sign up to like posts" : "Like this post"}
-          >
-            <Heart 
-              className={`h-5 w-5 transition-all duration-200 ${isLiking ? 'scale-125' : ''}`} 
-              fill={isLiked ? 'currentColor' : 'none'} 
-            />
-            <span className="font-medium">{likeCount || 'Like'}</span>
-          </button>
-
-          {/* Comment Button */}
-          <button 
-            onClick={() => {
-              if (isPublicView) {
-                onLoginPrompt?.();
-              } else {
-                setShowComments(!showComments);
-                setTimeout(() => commentInputRef.current?.focus(), 100);
-              }
-            }}
-            className="flex items-center space-x-2 px-3 py-2 rounded-lg text-slate-400 hover:text-indigo-400 hover:bg-indigo-500/10 transition-all duration-200"
-            title={isPublicView ? "Sign up to comment" : "Comment on this post"}
-          >
-            <MessageCircle className="h-5 w-5" />
-            <span className="font-medium">{commentCount || 'Comment'}</span>
-          </button>
-
-          {/* Share Button */}
+          {/* More Menu */}
           <div className="relative">
             <button 
-              onClick={handleShareClick}
-              className="flex items-center space-x-2 px-3 py-2 rounded-lg text-slate-400 hover:text-green-400 hover:bg-green-500/10 transition-all duration-200"
-              title={isPublicView ? "Sign up to share" : "Share this post"}
+              onClick={() => setShowMoreMenu(!showMoreMenu)}
+              className="p-2 text-slate-400 hover:text-white hover:bg-slate-700/50 rounded-lg transition-colors opacity-0 group-hover:opacity-100"
             >
-              <Share2 className="h-5 w-5" />
-              <span className="font-medium">Share</span>
+              <MoreHorizontal className="h-5 w-5" />
             </button>
-
-            {/* Share Menu */}
-            {showShareMenu && (
-              <div className="absolute left-0 top-12 bg-slate-800/90 backdrop-blur-md rounded-xl border border-slate-600/50 shadow-xl z-10 min-w-48">
-                <button className="w-full px-4 py-3 text-left text-slate-300 hover:text-white hover:bg-slate-700/50 rounded-t-xl transition-colors">
-                  Copy Link
+            
+            {showMoreMenu && (
+              <div className="absolute right-0 top-10 bg-slate-800/90 backdrop-blur-md rounded-xl border border-slate-600/50 shadow-xl z-10 min-w-48">
+                <button className="w-full px-4 py-3 text-left text-slate-300 hover:text-white hover:bg-slate-700/50 rounded-t-xl transition-colors flex items-center space-x-2">
+                  <Bookmark className="h-4 w-4" />
+                  <span>Save Post</span>
                 </button>
-                <button className="w-full px-4 py-3 text-left text-slate-300 hover:text-white hover:bg-slate-700/50 transition-colors">
-                  Share to Feed
-                </button>
-                <button className="w-full px-4 py-3 text-left text-slate-300 hover:text-white hover:bg-slate-700/50 rounded-b-xl transition-colors">
-                  Send Message
+                <button className="w-full px-4 py-3 text-left text-slate-300 hover:text-white hover:bg-slate-700/50 transition-colors flex items-center space-x-2">
+                  <Flag className="h-4 w-4" />
+                  <span>Report</span>
                 </button>
               </div>
             )}
           </div>
         </div>
 
-        {/* Public View Notice */}
-        {isPublicView && (
-          <button
-            onClick={onLoginPrompt}
-            className="text-xs text-slate-500 hover:text-slate-400 transition-colors"
-          >
-            Join to interact →
-          </button>
+        {/* Post Content */}
+        <div className="mb-4">
+          <p className="text-slate-200 leading-relaxed whitespace-pre-wrap">
+            {post.content}
+          </p>
+        </div>
+
+        {/* Media Files */}
+        {post.mediaFiles && post.mediaFiles.length > 0 && (
+          <div className="mb-4 grid gap-2 max-w-2xl">
+            {post.mediaFiles.map((file, idx) => (
+              <div key={idx} className="rounded-xl overflow-hidden border border-slate-600/30">
+                {file.type === 'image' && (
+                  <img 
+                    src={file.url} 
+                    alt="Post media" 
+                    className="w-full h-auto max-h-96 object-cover hover:scale-105 transition-transform duration-300 cursor-pointer" 
+                  />
+                )}
+                {file.type === 'video' && (
+                  <video controls className="w-full h-auto max-h-96 bg-black">
+                    <source src={file.url} />
+                    Your browser does not support video playback.
+                  </video>
+                )}
+                {file.type === 'audio' && (
+                  <div className="p-4 bg-slate-800/50">
+                    <audio controls className="w-full">
+                      <source src={file.url} />
+                      Your browser does not support audio playback.
+                    </audio>
+                  </div>
+                )}
+                {file.type === 'pdf' && (
+                  <div className="p-4 bg-slate-800/50 flex items-center space-x-3">
+                    <div className="w-10 h-10 bg-red-500/20 rounded-lg flex items-center justify-center">
+                      <span className="text-red-400 text-sm font-bold">PDF</span>
+                    </div>
+                    <div>
+                      <p className="text-white font-medium">{file.filename}</p>
+                      <p className="text-slate-400 text-sm">{(file.size / 1024 / 1024).toFixed(1)} MB</p>
+                    </div>
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
+        )}
+
+        {/* Engagement Stats */}
+        {(likeCount > 0 || commentCount > 0) && (
+          <div className="flex items-center justify-between text-slate-400 text-sm mb-3 pb-3 border-b border-slate-600/30">
+            <div className="flex items-center space-x-4">
+              {likeCount > 0 && (
+                <button 
+                  onClick={handleWhoLikedClick}
+                  className="flex items-center space-x-1 hover:text-slate-300 transition-colors cursor-pointer group"
+                  title={isPublicView ? "Sign up to see who liked this" : "See who liked this post"}
+                >
+                  <div className="flex -space-x-1">
+                    <div className="w-5 h-5 bg-gradient-to-r from-red-500 to-pink-500 rounded-full flex items-center justify-center border border-slate-800 group-hover:scale-110 transition-transform">
+                      <Heart className="h-3 w-3 text-white" fill="white" />
+                    </div>
+                  </div>
+                  <span className="hover:underline">{likeCount} {likeCount === 1 ? 'like' : 'likes'}</span>
+                  {isPublicView && (
+                    <span className="text-xs text-slate-500 ml-1">🔒</span>
+                  )}
+                </button>
+              )}
+              {commentCount > 0 && (
+                <span>{commentCount} {commentCount === 1 ? 'comment' : 'comments'}</span>
+              )}
+            </div>
+            <div className="flex items-center space-x-1">
+              <Eye className="h-4 w-4" />
+              <span>{Math.floor(Math.random() * 50) + 20} views</span>
+            </div>
+          </div>
+        )}
+
+        {/* Action Buttons */}
+        <div className="flex items-center justify-between">
+          <div className="flex items-center space-x-1">
+            {/* Like Button */}
+            <button 
+              onClick={handleLikeClick}
+              className={`flex items-center space-x-2 px-3 py-2 rounded-lg transition-all duration-200 ${
+                isLiked 
+                  ? 'text-red-400 bg-red-500/10 hover:bg-red-500/20' 
+                  : 'text-slate-400 hover:text-red-400 hover:bg-red-500/10'
+              } ${isLiking ? 'scale-110' : ''}`}
+              title={isPublicView ? "Sign up to like posts" : "Like this post"}
+            >
+              <Heart 
+                className={`h-5 w-5 transition-all duration-200 ${isLiking ? 'scale-125' : ''}`} 
+                fill={isLiked ? 'currentColor' : 'none'} 
+              />
+              <span className="font-medium">{likeCount || 'Like'}</span>
+            </button>
+
+            {/* Comment Button */}
+            <button 
+              onClick={() => {
+                if (isPublicView) {
+                  onLoginPrompt?.();
+                } else {
+                  setShowComments(!showComments);
+                  setTimeout(() => commentInputRef.current?.focus(), 100);
+                }
+              }}
+              className="flex items-center space-x-2 px-3 py-2 rounded-lg text-slate-400 hover:text-indigo-400 hover:bg-indigo-500/10 transition-all duration-200"
+              title={isPublicView ? "Sign up to comment" : "Comment on this post"}
+            >
+              <MessageCircle className="h-5 w-5" />
+              <span className="font-medium">{commentCount || 'Comment'}</span>
+            </button>
+
+            {/* Share Button */}
+            <div className="relative">
+              <button 
+                onClick={handleShareClick}
+                className="flex items-center space-x-2 px-3 py-2 rounded-lg text-slate-400 hover:text-green-400 hover:bg-green-500/10 transition-all duration-200"
+                title={isPublicView ? "Sign up to share" : "Share this post"}
+              >
+                <Share2 className="h-5 w-5" />
+                <span className="font-medium">Share</span>
+              </button>
+
+              {/* Share Menu */}
+              {showShareMenu && (
+                <div className="absolute left-0 top-12 bg-slate-800/90 backdrop-blur-md rounded-xl border border-slate-600/50 shadow-xl z-10 min-w-48">
+                  <button className="w-full px-4 py-3 text-left text-slate-300 hover:text-white hover:bg-slate-700/50 rounded-t-xl transition-colors">
+                    Copy Link
+                  </button>
+                  <button className="w-full px-4 py-3 text-left text-slate-300 hover:text-white hover:bg-slate-700/50 transition-colors">
+                    Share to Feed
+                  </button>
+                  <button className="w-full px-4 py-3 text-left text-slate-300 hover:text-white hover:bg-slate-700/50 rounded-b-xl transition-colors">
+                    Send Message
+                  </button>
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* Public View Notice */}
+          {isPublicView && (
+            <button
+              onClick={onLoginPrompt}
+              className="text-xs text-slate-500 hover:text-slate-400 transition-colors"
+            >
+              Join to interact →
+            </button>
+          )}
+        </div>
+
+        {/* Comments Section */}
+        {showComments && !isPublicView && (
+          <div className="mt-4 pt-4 border-t border-slate-600/30 space-y-4">
+            {/* Comment Input */}
+            <div className="flex space-x-3">
+              <div className="w-8 h-8 bg-gradient-to-r from-slate-600 to-zinc-600 rounded-full flex items-center justify-center text-white font-semibold text-xs">
+                {user?.username?.slice(0, 2).toUpperCase() || 'YU'}
+              </div>
+              <div className="flex-1">
+                <div className="flex space-x-2">
+                  <input
+                    ref={commentInputRef}
+                    type="text"
+                    value={commentText}
+                    onChange={(e) => setCommentText(e.target.value)}
+                    onKeyPress={(e) => e.key === 'Enter' && handleCommentSubmit()}
+                    placeholder="Write a comment..."
+                    className="flex-1 px-4 py-2 bg-black/40 border border-slate-600/50 rounded-full text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-slate-400 focus:border-slate-400"
+                  />
+                  <button
+                    onClick={handleCommentSubmit}
+                    disabled={!commentText.trim()}
+                    className="px-4 py-2 bg-gradient-to-r from-slate-700 to-zinc-700 text-white rounded-full hover:scale-105 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    <Send className="h-4 w-4" />
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            {/* Existing Comments */}
+            {post.comments && post.comments.length > 0 && (
+              <div className="space-y-3">
+                {post.comments.map((comment, idx) => (
+                  <div key={idx} className="flex space-x-3">
+                    <div className="w-8 h-8 bg-gradient-to-r from-slate-600 to-zinc-600 rounded-full flex items-center justify-center text-white font-semibold text-xs">
+                      {comment.user?.username?.slice(0, 2).toUpperCase() || comment.author?.slice(0, 2).toUpperCase() || 'UN'}
+                    </div>
+                    <div className="flex-1">
+                      <div className="bg-slate-800/50 rounded-2xl px-4 py-2">
+                        <div className="flex items-center space-x-2 mb-1">
+                          <span className="font-medium text-white text-sm">
+                            {comment.user?.username || comment.author || 'Unknown User'}
+                          </span>
+                          <span className="text-slate-500 text-xs">
+                            {getTimeAgo(comment.createdAt || new Date())}
+                          </span>
+                        </div>
+                        <p className="text-slate-200 text-sm">{comment.content}</p>
+                      </div>
+                      <div className="flex items-center space-x-4 mt-1 px-4">
+                        <button className="text-xs text-slate-500 hover:text-slate-400 transition-colors">
+                          Like
+                        </button>
+                        <button className="text-xs text-slate-500 hover:text-slate-400 transition-colors">
+                          Reply
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Click outside handlers */}
+        {(showShareMenu || showMoreMenu) && (
+          <div 
+            className="fixed inset-0 z-0" 
+            onClick={() => {
+              setShowShareMenu(false);
+              setShowMoreMenu(false);
+            }}
+          />
         )}
       </div>
 
-      {/* Comments Section */}
-      {showComments && !isPublicView && (
-        <div className="mt-4 pt-4 border-t border-slate-600/30 space-y-4">
-          {/* Comment Input */}
-          <div className="flex space-x-3">
-            <div className="w-8 h-8 bg-gradient-to-r from-slate-600 to-zinc-600 rounded-full flex items-center justify-center text-white font-semibold text-xs">
-              {user?.username?.slice(0, 2).toUpperCase() || 'YU'}
+      {/* Who Liked Modal */}
+      {showWhoLiked && (
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50" onClick={() => setShowWhoLiked(false)}>
+          <div className="bg-gradient-to-r from-slate-900/95 to-zinc-900/95 backdrop-blur-md rounded-2xl border border-slate-600/50 shadow-2xl max-w-md w-full mx-4 max-h-96 overflow-hidden" onClick={e => e.stopPropagation()}>
+            {/* Modal Header */}
+            <div className="flex items-center justify-between p-6 border-b border-slate-600/30">
+              <h3 className="text-xl font-semibold text-white">Liked by</h3>
+              <button 
+                onClick={() => setShowWhoLiked(false)}
+                className="p-2 text-slate-400 hover:text-white hover:bg-slate-700/50 rounded-lg transition-colors"
+              >
+                <X className="h-5 w-5" />
+              </button>
             </div>
-            <div className="flex-1">
-              <div className="flex space-x-2">
-                <input
-                  ref={commentInputRef}
-                  type="text"
-                  value={commentText}
-                  onChange={(e) => setCommentText(e.target.value)}
-                  onKeyPress={(e) => e.key === 'Enter' && handleCommentSubmit()}
-                  placeholder="Write a comment..."
-                  className="flex-1 px-4 py-2 bg-black/40 border border-slate-600/50 rounded-full text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-slate-400 focus:border-slate-400"
-                />
-                <button
-                  onClick={handleCommentSubmit}
-                  disabled={!commentText.trim()}
-                  className="px-4 py-2 bg-gradient-to-r from-slate-700 to-zinc-700 text-white rounded-full hover:scale-105 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
-                >
-                  <Send className="h-4 w-4" />
-                </button>
-              </div>
+            
+            {/* Modal Content */}
+            <div className="p-4 overflow-y-auto max-h-80">
+              {usersWhoLiked.length === 0 ? (
+                <div className="text-center text-slate-400 py-8">
+                  <Heart className="h-12 w-12 mx-auto mb-3 opacity-50" />
+                  <p>No likes yet</p>
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  {usersWhoLiked.map((likeUser, index) => (
+                    <div key={index} className="flex items-center space-x-3 p-3 rounded-xl hover:bg-slate-800/30 transition-colors cursor-pointer">
+                      {/* User Avatar */}
+                      <div className="w-10 h-10 bg-gradient-to-r from-slate-600 to-zinc-600 rounded-full flex items-center justify-center text-white font-semibold text-sm shadow-lg">
+                        {likeUser.username?.slice(0, 2).toUpperCase() || likeUser.avatar || '👤'}
+                      </div>
+                      
+                      {/* User Info */}
+                      <div className="flex-1">
+                        <div className="flex items-center space-x-2">
+                          <span className="font-medium text-white">{likeUser.username}</span>
+                          {likeUser.verified && (
+                            <div className="w-4 h-4 bg-gradient-to-r from-blue-500 to-indigo-600 rounded-full flex items-center justify-center">
+                              <span className="text-white text-xs">✓</span>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                      
+                      {/* Heart Icon */}
+                      <div className="text-red-400">
+                        <Heart className="h-5 w-5" fill="currentColor" />
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
           </div>
-
-          {/* Existing Comments */}
-          {post.comments && post.comments.length > 0 && (
-            <div className="space-y-3">
-              {post.comments.map((comment, idx) => (
-                <div key={idx} className="flex space-x-3">
-                  <div className="w-8 h-8 bg-gradient-to-r from-slate-600 to-zinc-600 rounded-full flex items-center justify-center text-white font-semibold text-xs">
-                    {comment.user?.username?.slice(0, 2).toUpperCase() || comment.author?.slice(0, 2).toUpperCase() || 'UN'}
-                  </div>
-                  <div className="flex-1">
-                    <div className="bg-slate-800/50 rounded-2xl px-4 py-2">
-                      <div className="flex items-center space-x-2 mb-1">
-                        <span className="font-medium text-white text-sm">
-                          {comment.user?.username || comment.author || 'Unknown User'}
-                        </span>
-                        <span className="text-slate-500 text-xs">
-                          {getTimeAgo(comment.createdAt || new Date())}
-                        </span>
-                      </div>
-                      <p className="text-slate-200 text-sm">{comment.content}</p>
-                    </div>
-                    <div className="flex items-center space-x-4 mt-1 px-4">
-                      <button className="text-xs text-slate-500 hover:text-slate-400 transition-colors">
-                        Like
-                      </button>
-                      <button className="text-xs text-slate-500 hover:text-slate-400 transition-colors">
-                        Reply
-                      </button>
-                    </div>
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
         </div>
       )}
-
-      {/* Click outside handlers */}
-      {(showShareMenu || showMoreMenu) && (
-        <div 
-          className="fixed inset-0 z-0" 
-          onClick={() => {
-            setShowShareMenu(false);
-            setShowMoreMenu(false);
-          }}
-        />
-      )}
-    </div>
+    </>
   );
 });
 
