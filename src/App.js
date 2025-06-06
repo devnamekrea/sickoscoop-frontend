@@ -1,9 +1,250 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react';
-import { Heart, MessageCircle, Share2, Send, Upload, Image, Video, FileText, Mic, User, Search, Settings, Plus, X, MoreHorizontal, Flag, Bookmark, Eye, ArrowLeft, Clock, Users } from 'lucide-react';
+import { Heart, MessageCircle, Share2, Send, Upload, Image, Video, FileText, Mic, User, Search, Settings, Plus, X, MoreHorizontal, Flag, Bookmark, Eye, ArrowLeft, Clock, Users, Copy, ExternalLink, Twitter, Facebook, Linkedin } from 'lucide-react';
 
 const API_BASE = window.location.hostname === 'localhost' 
   ? 'http://localhost:3001/api'
   : 'https://sickoscoop-backend-deo45.ondigitalocean.app/api';
+
+// Enhanced URL generation for posts
+const generatePostUrl = (postId) => {
+  const baseUrl = window.location.hostname === 'localhost' 
+    ? 'http://localhost:3000'
+    : 'https://sickoscoop.netlify.app';
+  return `${baseUrl}/post/${postId}`;
+};
+
+// Enhanced timestamp function with more details
+const getDetailedTimestamp = (date) => {
+  const now = new Date();
+  const postDate = new Date(date);
+  const diffInMinutes = Math.floor((now - postDate) / (1000 * 60));
+  
+  if (diffInMinutes < 1) return { relative: 'Just now', absolute: postDate.toLocaleTimeString() };
+  if (diffInMinutes < 60) return { 
+    relative: `${diffInMinutes}m ago`, 
+    absolute: postDate.toLocaleString() 
+  };
+  
+  const diffInHours = Math.floor(diffInMinutes / 60);
+  if (diffInHours < 24) return { 
+    relative: `${diffInHours}h ago`, 
+    absolute: postDate.toLocaleString() 
+  };
+  
+  const diffInDays = Math.floor(diffInHours / 24);
+  if (diffInDays < 7) return { 
+    relative: `${diffInDays}d ago`, 
+    absolute: postDate.toLocaleDateString() 
+  };
+  
+  const diffInWeeks = Math.floor(diffInDays / 7);
+  if (diffInWeeks < 4) return { 
+    relative: `${diffInWeeks}w ago`, 
+    absolute: postDate.toLocaleDateString() 
+  };
+  
+  return { 
+    relative: postDate.toLocaleDateString(), 
+    absolute: postDate.toLocaleString() 
+  };
+};
+
+// Enhanced Share Modal Component
+const ShareModal = React.memo(({ post, isOpen, onClose }) => {
+  const [copied, setCopied] = useState(false);
+  const postUrl = generatePostUrl(post._id);
+  const shareText = `Check out this post by ${post.userId?.username || 'someone'} on SickoScoop: "${post.content.substring(0, 100)}${post.content.length > 100 ? '...' : ''}"`;
+
+  const handleCopyLink = async () => {
+    try {
+      await navigator.clipboard.writeText(postUrl);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    } catch (error) {
+      console.error('Failed to copy:', error);
+      // Fallback for older browsers
+      const textArea = document.createElement('textarea');
+      textArea.value = postUrl;
+      document.body.appendChild(textArea);
+      textArea.select();
+      document.execCommand('copy');
+      document.body.removeChild(textArea);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    }
+  };
+
+  const handleSocialShare = (platform) => {
+    const encodedText = encodeURIComponent(shareText);
+    const encodedUrl = encodeURIComponent(postUrl);
+    
+    const shareUrls = {
+      twitter: `https://twitter.com/intent/tweet?text=${encodedText}&url=${encodedUrl}`,
+      facebook: `https://www.facebook.com/sharer/sharer.php?u=${encodedUrl}`,
+      linkedin: `https://www.linkedin.com/sharing/share-offsite/?url=${encodedUrl}`,
+      reddit: `https://reddit.com/submit?url=${encodedUrl}&title=${encodedText}`,
+      email: `mailto:?subject=${encodeURIComponent('Check out this SickoScoop post')}&body=${encodedText}%0A%0A${encodedUrl}`
+    };
+
+    if (shareUrls[platform]) {
+      window.open(shareUrls[platform], '_blank', 'width=600,height=400');
+    }
+  };
+
+  const handleNativeShare = async () => {
+    if (navigator.share) {
+      try {
+        await navigator.share({
+          title: 'SickoScoop Post',
+          text: shareText,
+          url: postUrl,
+        });
+      } catch (error) {
+        console.error('Error sharing:', error);
+      }
+    }
+  };
+
+  if (!isOpen) return null;
+
+  return (
+    <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50" onClick={onClose}>
+      <div className="bg-gradient-to-r from-slate-900/95 to-zinc-900/95 backdrop-blur-md rounded-2xl border border-slate-600/50 shadow-2xl max-w-md w-full mx-4" onClick={e => e.stopPropagation()}>
+        {/* Modal Header */}
+        <div className="flex items-center justify-between p-6 border-b border-slate-600/30">
+          <h3 className="text-xl font-semibold text-white">Share Post</h3>
+          <button 
+            onClick={onClose}
+            className="p-2 text-slate-400 hover:text-white hover:bg-slate-700/50 rounded-lg transition-colors"
+          >
+            <X className="h-5 w-5" />
+          </button>
+        </div>
+        
+        {/* Modal Content */}
+        <div className="p-6">
+          {/* Post Preview */}
+          <div className="bg-slate-800/50 rounded-lg p-4 mb-6">
+            <div className="flex items-center space-x-3 mb-3">
+              <div className="w-8 h-8 bg-gradient-to-r from-slate-600 to-zinc-600 rounded-full flex items-center justify-center text-white font-semibold text-xs">
+                {post.userId?.username?.slice(0, 2).toUpperCase() || 'UN'}
+              </div>
+              <span className="text-white font-medium">{post.userId?.username || 'Unknown User'}</span>
+            </div>
+            <p className="text-slate-300 text-sm line-clamp-3">{post.content}</p>
+          </div>
+
+          {/* Copy Link */}
+          <div className="mb-6">
+            <label className="block text-sm font-medium text-slate-300 mb-2">Post Link</label>
+            <div className="flex space-x-2">
+              <input
+                type="text"
+                value={postUrl}
+                readOnly
+                className="flex-1 px-3 py-2 bg-black/40 border border-slate-600/50 rounded-lg text-white text-sm focus:outline-none focus:ring-2 focus:ring-amber-500/50"
+              />
+              <button
+                onClick={handleCopyLink}
+                className={`px-4 py-2 rounded-lg transition-all duration-200 flex items-center space-x-2 ${
+                  copied 
+                    ? 'bg-green-600 text-white' 
+                    : 'bg-slate-700 text-slate-300 hover:bg-slate-600'
+                }`}
+              >
+                <Copy className="h-4 w-4" />
+                <span>{copied ? 'Copied!' : 'Copy'}</span>
+              </button>
+            </div>
+          </div>
+
+          {/* Social Share Options */}
+          <div className="space-y-4">
+            <label className="block text-sm font-medium text-slate-300">Share to</label>
+            
+            {/* Native Share (Mobile) */}
+            {navigator.share && (
+              <button
+                onClick={handleNativeShare}
+                className="w-full flex items-center space-x-3 p-3 bg-slate-700/50 hover:bg-slate-700/70 rounded-lg transition-colors text-white"
+              >
+                <Share2 className="h-5 w-5" />
+                <span>Share via device</span>
+              </button>
+            )}
+
+            {/* Social Media Buttons */}
+            <div className="grid grid-cols-2 gap-3">
+              <button
+                onClick={() => handleSocialShare('twitter')}
+                className="flex items-center space-x-3 p-3 bg-blue-600/20 hover:bg-blue-600/30 rounded-lg transition-colors text-blue-400 border border-blue-600/30"
+              >
+                <Twitter className="h-5 w-5" />
+                <span>Twitter</span>
+              </button>
+              
+              <button
+                onClick={() => handleSocialShare('facebook')}
+                className="flex items-center space-x-3 p-3 bg-blue-700/20 hover:bg-blue-700/30 rounded-lg transition-colors text-blue-300 border border-blue-700/30"
+              >
+                <Facebook className="h-5 w-5" />
+                <span>Facebook</span>
+              </button>
+              
+              <button
+                onClick={() => handleSocialShare('linkedin')}
+                className="flex items-center space-x-3 p-3 bg-blue-800/20 hover:bg-blue-800/30 rounded-lg transition-colors text-blue-200 border border-blue-800/30"
+              >
+                <Linkedin className="h-5 w-5" />
+                <span>LinkedIn</span>
+              </button>
+              
+              <button
+                onClick={() => handleSocialShare('email')}
+                className="flex items-center space-x-3 p-3 bg-slate-700/20 hover:bg-slate-700/30 rounded-lg transition-colors text-slate-300 border border-slate-700/30"
+              >
+                <ExternalLink className="h-5 w-5" />
+                <span>Email</span>
+              </button>
+            </div>
+
+            {/* Additional Options */}
+            <div className="pt-4 border-t border-slate-600/30">
+              <button
+                onClick={() => handleSocialShare('reddit')}
+                className="w-full flex items-center space-x-3 p-3 bg-orange-600/20 hover:bg-orange-600/30 rounded-lg transition-colors text-orange-400 border border-orange-600/30"
+              >
+                <ExternalLink className="h-5 w-5" />
+                <span>Share to Reddit</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+});
+
+// URL Router simulation (since we're not using React Router yet)
+const useSimpleRouter = () => {
+  const [currentPath, setCurrentPath] = useState(window.location.pathname);
+  
+  useEffect(() => {
+    const handlePopState = () => {
+      setCurrentPath(window.location.pathname);
+    };
+    
+    window.addEventListener('popstate', handlePopState);
+    return () => window.removeEventListener('popstate', handlePopState);
+  }, []);
+  
+  const navigate = (path) => {
+    window.history.pushState({}, '', path);
+    setCurrentPath(path);
+  };
+  
+  return { currentPath, navigate };
+};
 
 // Move LandingPage outside to prevent re-creation
 const LandingPage = React.memo(({ 
@@ -49,23 +290,17 @@ const LandingPage = React.memo(({
         </span>
       </h1>
 
-      {/* Browse Public Feed Button - Moved Higher */}
+      {/* Browse Public Feed Button */}
       <div className="mb-8 flex flex-col items-center">
         <button
           onClick={onBrowsePublic}
           className="px-8 py-3 bg-gradient-to-r from-gray-900 via-slate-800 to-black text-white text-lg font-semibold rounded-lg hover:scale-105 transform transition-all duration-300 shadow-2xl hover:shadow-amber-500/50 border-2 border-amber-500/80 hover:border-amber-400 hover:from-gray-800 hover:via-slate-700 hover:to-gray-900 backdrop-blur-md flex items-center space-x-3"
         >
-          {/* Mystical Combined Symbol */}
           <div className="relative w-6 h-6">
-            {/* Base circle from first icon */}
             <div className="absolute inset-0 bg-gradient-to-br from-purple-400 via-indigo-500 to-violet-600 rounded-full opacity-80 blur-sm animate-pulse"></div>
             <div className="absolute inset-1 bg-gradient-to-tr from-orange-400 via-amber-500 to-red-500 rounded-full opacity-90"></div>
-            
-            {/* Diamond overlay from second icon */}
             <div className="absolute inset-0 bg-gradient-to-br from-cyan-400 via-blue-500 to-indigo-600 transform rotate-45 opacity-70 blur-sm"></div>
             <div className="absolute inset-1 bg-gradient-to-tr from-amber-300 via-orange-400 to-red-400 transform rotate-45 opacity-80"></div>
-            
-            {/* Triangle overlay from third icon */}
             <div className="absolute inset-0 bg-gradient-to-bl from-violet-400 via-purple-500 to-indigo-600 opacity-60" style={{clipPath: 'polygon(50% 10%, 10% 90%, 90% 90%)'}}></div>
             <div className="absolute inset-1 bg-gradient-to-tl from-orange-300 via-amber-400 to-yellow-400 opacity-70 animate-pulse" style={{clipPath: 'polygon(50% 15%, 15% 85%, 85% 85%)'}}></div>
           </div>
@@ -211,7 +446,7 @@ const LandingPage = React.memo(({
   </div>
 ));
 
-// Header component with individual post view support
+// Header component with URL routing support
 const Header = React.memo(({ 
   currentView, 
   setCurrentView, 
@@ -219,7 +454,8 @@ const Header = React.memo(({
   handleLogout, 
   user,
   selectedPost,
-  onBackToFeed
+  onBackToFeed,
+  navigate
 }) => {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [isSearchOpen, setIsSearchOpen] = useState(false);
@@ -227,11 +463,8 @@ const Header = React.memo(({
   return (
     <header className="bg-gradient-to-r from-gray-900 via-slate-900 to-zinc-900 shadow-2xl border-b border-amber-500/30 backdrop-blur-md relative z-50">
       <div className="container mx-auto px-4 py-3">
-        {/* Main Header Row */}
         <div className="flex items-center justify-between">
-          {/* Left: Logo + Mobile Menu Button + Back Button for Post View */}
           <div className="flex items-center space-x-3 flex-shrink-0">
-            {/* Back button for individual post view */}
             {currentView === 'post' && (
               <button
                 onClick={onBackToFeed}
@@ -242,11 +475,16 @@ const Header = React.memo(({
               </button>
             )}
             
-            <div className="text-xl md:text-2xl lg:text-3xl font-bold bg-gradient-to-r from-slate-300 to-purple-400 bg-clip-text text-transparent">
+            <button
+              onClick={() => {
+                navigate('/');
+                setCurrentView('feed');
+              }}
+              className="text-xl md:text-2xl lg:text-3xl font-bold bg-gradient-to-r from-slate-300 to-purple-400 bg-clip-text text-transparent hover:scale-105 transition-transform"
+            >
               SickoScoop
-            </div>
+            </button>
             
-            {/* Mobile Menu Button */}
             <button
               onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
               className="md:hidden p-2 text-slate-300 hover:text-white transition-colors rounded-lg hover:bg-slate-800/50"
@@ -259,19 +497,19 @@ const Header = React.memo(({
             </button>
           </div>
 
-          {/* Center: Navigation or Post Title */}
           <div className="hidden md:flex items-center space-x-3 flex-1 justify-center max-w-2xl">
             {currentView === 'post' ? (
-              // Post title in header
               <div className="text-center text-slate-300">
                 <span className="text-lg font-medium">Post by {selectedPost?.userId?.username || 'Unknown User'}</span>
               </div>
             ) : (
-              // Regular Navigation
               <>
                 <div className="flex space-x-3">
                   <button
-                    onClick={() => setCurrentView('feed')}
+                    onClick={() => {
+                      navigate('/');
+                      setCurrentView('feed');
+                    }}
                     className={`px-4 py-2 rounded-lg border-2 transition-all duration-200 font-medium text-sm lg:text-base ${
                       currentView === 'feed' 
                         ? 'bg-slate-700 text-white border-amber-500 shadow-lg shadow-amber-500/20' 
@@ -281,7 +519,10 @@ const Header = React.memo(({
                     Feed
                   </button>
                   <button
-                    onClick={() => setCurrentView('profile')}
+                    onClick={() => {
+                      navigate('/profile');
+                      setCurrentView('profile');
+                    }}
                     className={`px-4 py-2 rounded-lg border-2 transition-all duration-200 font-medium text-sm lg:text-base ${
                       currentView === 'profile' 
                         ? 'bg-slate-700 text-white border-amber-500 shadow-lg shadow-amber-500/20' 
@@ -291,7 +532,10 @@ const Header = React.memo(({
                     Profile
                   </button>
                   <button
-                    onClick={() => setCurrentView('chat')}
+                    onClick={() => {
+                      navigate('/chat');
+                      setCurrentView('chat');
+                    }}
                     className={`px-4 py-2 rounded-lg border-2 transition-all duration-200 font-medium text-sm lg:text-base ${
                       currentView === 'chat' 
                         ? 'bg-slate-700 text-white border-amber-500 shadow-lg shadow-amber-500/20' 
@@ -302,7 +546,6 @@ const Header = React.memo(({
                   </button>
                 </div>
 
-                {/* Desktop Search - Reduced width for better spacing */}
                 <div className="hidden lg:block relative ml-4">
                   <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-slate-500" />
                   <input
@@ -315,9 +558,7 @@ const Header = React.memo(({
             )}
           </div>
 
-          {/* Right: Actions */}
           <div className="flex items-center flex-shrink-0 mr-2">
-            {/* Mobile Search Button - Hide in post view */}
             {currentView !== 'post' && (
               <button
                 onClick={() => setIsSearchOpen(!isSearchOpen)}
@@ -327,7 +568,6 @@ const Header = React.memo(({
               </button>
             )}
 
-            {/* User Avatar */}
             <div 
               className="w-10 h-10 rounded-full flex items-center justify-center font-bold shadow-lg transition-all duration-200 cursor-pointer hover:scale-110 hover:shadow-xl text-sm bg-gradient-to-r from-amber-500 to-orange-600 border-2 border-amber-500/80 text-white mr-3"
               onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
@@ -335,12 +575,10 @@ const Header = React.memo(({
               {user?.username?.slice(0, 2).toUpperCase() || 'YU'}
             </div>
 
-            {/* Settings Button */}
             <button className="p-2 text-slate-300 hover:text-white transition-colors duration-200 hover:bg-slate-800/50 rounded-lg mr-3">
               <Settings className="h-5 w-5" />
             </button>
             
-            {/* Logout Button */}
             <button
               onClick={handleLogout}
               className="hidden sm:flex px-3 py-2 text-sm rounded-lg transition-all duration-200 hover:scale-105 bg-slate-700/40 text-slate-300 border-2 border-amber-600/40 hover:border-amber-500 hover:bg-slate-700/60 hover:text-white font-semibold"
@@ -350,7 +588,6 @@ const Header = React.memo(({
           </div>
         </div>
 
-        {/* Mobile Search Bar - Hide in post view */}
         {isSearchOpen && currentView !== 'post' && (
           <div className="mt-3 lg:hidden">
             <div className="relative">
@@ -365,11 +602,9 @@ const Header = React.memo(({
           </div>
         )}
 
-        {/* Mobile Navigation Menu */}
         {isMobileMenuOpen && (
           <div className="md:hidden mt-4 pb-2 bg-black/20 rounded-xl p-4 border border-slate-600/30">
             <div className="flex flex-col space-y-3">
-              {/* Back button for mobile in post view */}
               {currentView === 'post' && (
                 <button
                   onClick={() => {
@@ -383,11 +618,11 @@ const Header = React.memo(({
                 </button>
               )}
               
-              {/* Navigation Buttons - Hide in post view */}
               {currentView !== 'post' && (
                 <>
                   <button
                     onClick={() => {
+                      navigate('/');
                       setCurrentView('feed');
                       setIsMobileMenuOpen(false);
                     }}
@@ -403,6 +638,7 @@ const Header = React.memo(({
                   
                   <button
                     onClick={() => {
+                      navigate('/profile');
                       setCurrentView('profile');
                       setIsMobileMenuOpen(false);
                     }}
@@ -418,6 +654,7 @@ const Header = React.memo(({
                   
                   <button
                     onClick={() => {
+                      navigate('/chat');
                       setCurrentView('chat');
                       setIsMobileMenuOpen(false);
                     }}
@@ -433,10 +670,8 @@ const Header = React.memo(({
                 </>
               )}
               
-              {/* Divider */}
               <div className="border-t border-slate-600/40 my-2"></div>
               
-              {/* Mobile Logout */}
               <button
                 onClick={() => {
                   handleLogout();
@@ -465,7 +700,6 @@ const PostCreator = React.memo(({
   fileInputRef, 
   handleFileUpload 
 }) => {
-  // Add state for file uploads
   const [uploadState, setUploadState] = useState({
     pdf: false,
     audio: false,
@@ -473,13 +707,11 @@ const PostCreator = React.memo(({
     photo: false
   });
 
-  // Create refs for each file input
   const pdfInputRef = useRef(null);
   const audioInputRef = useRef(null);
   const videoInputRef = useRef(null);
   const photoInputRef = useRef(null);
 
-  // Handle file selection for each type
   const handleFileSelect = (type, files) => {
     setUploadState(prev => ({
       ...prev,
@@ -490,7 +722,6 @@ const PostCreator = React.memo(({
     }
   };
 
-  // Check if post should be enabled (has text OR any file)
   const hasContent = newPost.trim() || 
                     uploadState.pdf || 
                     uploadState.audio || 
@@ -592,7 +823,6 @@ const PostCreator = React.memo(({
         </div>
       </div>
       
-      {/* Hidden file inputs */}
       <input
         ref={pdfInputRef}
         type="file"
@@ -622,7 +852,6 @@ const PostCreator = React.memo(({
         className="hidden"
       />
       
-      {/* Keep the existing file input for backward compatibility */}
       <input
         ref={fileInputRef}
         type="file"
@@ -635,7 +864,7 @@ const PostCreator = React.memo(({
   );
 });
 
-// Enhanced Post component with click-to-view functionality
+// Enhanced Post component with sharing and timestamps
 const Post = React.memo(({ 
   post, 
   user, 
@@ -645,38 +874,19 @@ const Post = React.memo(({
   isPublicView = false, 
   onLoginPrompt,
   onPostClick,
-  isDetailView = false  // New prop to indicate if this is the detailed view
+  isDetailView = false,
+  navigate
 }) => {
-  const [showComments, setShowComments] = useState(isDetailView); // Show comments by default in detail view
+  const [showComments, setShowComments] = useState(isDetailView);
   const [commentText, setCommentText] = useState('');
-  const [showShareMenu, setShowShareMenu] = useState(false);
+  const [showShareModal, setShowShareModal] = useState(false);
   const [showMoreMenu, setShowMoreMenu] = useState(false);
   const [showWhoLiked, setShowWhoLiked] = useState(false);
   const [isLiking, setIsLiking] = useState(false);
   const commentInputRef = useRef(null);
 
-  // Enhanced timestamp function
-  const getTimeAgo = (date) => {
-    const now = new Date();
-    const postDate = new Date(date);
-    const diffInMinutes = Math.floor((now - postDate) / (1000 * 60));
-    
-    if (diffInMinutes < 1) return 'Just now';
-    if (diffInMinutes < 60) return `${diffInMinutes}m ago`;
-    
-    const diffInHours = Math.floor(diffInMinutes / 60);
-    if (diffInHours < 24) return `${diffInHours}h ago`;
-    
-    const diffInDays = Math.floor(diffInHours / 24);
-    if (diffInDays < 7) return `${diffInDays}d ago`;
-    
-    const diffInWeeks = Math.floor(diffInDays / 7);
-    if (diffInWeeks < 4) return `${diffInWeeks}w ago`;
-    
-    return postDate.toLocaleDateString();
-  };
+  const timestamp = getDetailedTimestamp(post.createdAt);
 
-  // Enhanced like handler with animation
   const handleLikeClick = async () => {
     if (isPublicView) {
       onLoginPrompt?.();
@@ -691,7 +901,6 @@ const Post = React.memo(({
     }
   };
 
-  // Handle comment submission
   const handleCommentSubmit = () => {
     if (!commentText.trim()) return;
     
@@ -704,16 +913,14 @@ const Post = React.memo(({
     setCommentText('');
   };
 
-  // Handle share click
   const handleShareClick = () => {
     if (isPublicView) {
       onLoginPrompt?.();
       return;
     }
-    setShowShareMenu(!showShareMenu);
+    setShowShareModal(true);
   };
 
-  // Handle who liked click
   const handleWhoLikedClick = () => {
     if (isPublicView) {
       onLoginPrompt?.();
@@ -722,14 +929,12 @@ const Post = React.memo(({
     setShowWhoLiked(true);
   };
 
-  // Handle post content click - navigate to individual post view
   const handlePostContentClick = (e) => {
-    // Don't navigate if clicking on interactive elements
     if (e.target.closest('button') || 
         e.target.closest('input') || 
         e.target.closest('a') ||
         e.target.closest('.post-action-button') ||
-        showShareMenu || 
+        showShareModal || 
         showMoreMenu || 
         showWhoLiked ||
         isDetailView) {
@@ -741,27 +946,24 @@ const Post = React.memo(({
       return;
     }
 
-    // Navigate to individual post view
+    if (navigate) {
+      navigate(`/post/${post._id}`);
+    }
     onPostClick?.(post);
   };
 
-  // Check if user liked the post
   const isLiked = !isPublicView && post.likes?.some(like => 
     (typeof like === 'string' ? like : like.user || like._id) === (user?._id || user?.id)
   );
 
-  // Get like count and users who liked
   const likeCount = post.likes?.length || 0;
   const commentCount = post.comments?.length || 0;
 
-  // Get users who liked (for the modal)
   const usersWhoLiked = React.useMemo(() => {
     if (!post.likes || post.likes.length === 0) return [];
     
-    // Handle different like data structures
     return post.likes.map((like, index) => {
       if (typeof like === 'string') {
-        // If it's just a user ID, create a mock user object
         return {
           _id: like,
           username: `User ${index + 1}`,
@@ -769,7 +971,6 @@ const Post = React.memo(({
           verified: false
         };
       } else if (like.user) {
-        // If it has a user object
         return {
           _id: like.user._id || like.user,
           username: like.user.username || `User ${index + 1}`,
@@ -777,7 +978,6 @@ const Post = React.memo(({
           verified: like.user.verified || false
         };
       } else {
-        // Direct user object
         return {
           _id: like._id || `user-${index}`,
           username: like.username || `User ${index + 1}`,
@@ -799,12 +999,10 @@ const Post = React.memo(({
         {/* Post Header */}
         <div className="flex items-start justify-between mb-4">
           <div className="flex items-start space-x-4">
-            {/* User Avatar */}
             <div className="w-12 h-12 bg-gradient-to-r from-slate-600 to-zinc-600 rounded-full flex items-center justify-center text-white font-semibold text-sm shadow-lg">
               {post.userId?.username?.slice(0, 2).toUpperCase() || 'UN'}
             </div>
             
-            {/* User Info & Time */}
             <div className="flex-1">
               <div className="flex items-center space-x-2 mb-1">
                 <span className="font-semibold text-white hover:text-slate-200 cursor-pointer">
@@ -816,13 +1014,16 @@ const Post = React.memo(({
                   </div>
                 )}
                 <span className="text-slate-400 text-sm">•</span>
-                <span className="text-slate-400 text-sm hover:text-slate-300 cursor-pointer flex items-center space-x-1" title={new Date(post.createdAt).toLocaleString()}>
+                <span 
+                  className="text-slate-400 text-sm hover:text-slate-300 cursor-pointer flex items-center space-x-1 group/timestamp" 
+                  title={timestamp.absolute}
+                >
                   <Clock className="h-3 w-3" />
-                  <span>{getTimeAgo(post.createdAt)}</span>
+                  <span className="group-hover/timestamp:hidden">{timestamp.relative}</span>
+                  <span className="hidden group-hover/timestamp:inline text-xs">{timestamp.absolute}</span>
                 </span>
               </div>
               
-              {/* Transparency Score */}
               {post.userId?.transparencyScore && (
                 <div className="flex items-center space-x-1">
                   <div className="w-2 h-2 bg-green-500 rounded-full"></div>
@@ -834,7 +1035,6 @@ const Post = React.memo(({
             </div>
           </div>
 
-          {/* More Menu */}
           <div className="relative">
             <button 
               onClick={(e) => {
@@ -849,8 +1049,19 @@ const Post = React.memo(({
             {showMoreMenu && (
               <div className="absolute right-0 top-10 bg-slate-800/90 backdrop-blur-md rounded-xl border border-slate-600/50 shadow-xl z-10 min-w-48">
                 <button 
-                  onClick={(e) => e.stopPropagation()}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    navigator.clipboard.writeText(generatePostUrl(post._id));
+                    setShowMoreMenu(false);
+                  }}
                   className="w-full px-4 py-3 text-left text-slate-300 hover:text-white hover:bg-slate-700/50 rounded-t-xl transition-colors flex items-center space-x-2"
+                >
+                  <Copy className="h-4 w-4" />
+                  <span>Copy Link</span>
+                </button>
+                <button 
+                  onClick={(e) => e.stopPropagation()}
+                  className="w-full px-4 py-3 text-left text-slate-300 hover:text-white hover:bg-slate-700/50 transition-colors flex items-center space-x-2"
                 >
                   <Bookmark className="h-4 w-4" />
                   <span>Save Post</span>
@@ -859,6 +1070,7 @@ const Post = React.memo(({
                   <button 
                     onClick={(e) => {
                       e.stopPropagation();
+                      if (navigate) navigate(`/post/${post._id}`);
                       onPostClick?.(post);
                       setShowMoreMenu(false);
                     }}
@@ -971,7 +1183,6 @@ const Post = React.memo(({
         {/* Action Buttons */}
         <div className="flex items-center justify-between">
           <div className="flex items-center space-x-1">
-            {/* Like Button */}
             <button 
               onClick={(e) => {
                 e.stopPropagation();
@@ -991,7 +1202,6 @@ const Post = React.memo(({
               <span className="font-medium">{likeCount || 'Like'}</span>
             </button>
 
-            {/* Comment Button */}
             <button 
               onClick={(e) => {
                 e.stopPropagation();
@@ -1009,7 +1219,6 @@ const Post = React.memo(({
               <span className="font-medium">{commentCount || 'Comment'}</span>
             </button>
 
-            {/* Share Button */}
             <div className="relative">
               <button 
                 onClick={(e) => {
@@ -1022,38 +1231,14 @@ const Post = React.memo(({
                 <Share2 className="h-5 w-5" />
                 <span className="font-medium">Share</span>
               </button>
-
-              {/* Share Menu */}
-              {showShareMenu && (
-                <div className="absolute left-0 top-12 bg-slate-800/90 backdrop-blur-md rounded-xl border border-slate-600/50 shadow-xl z-10 min-w-48">
-                  <button 
-                    onClick={(e) => e.stopPropagation()}
-                    className="w-full px-4 py-3 text-left text-slate-300 hover:text-white hover:bg-slate-700/50 rounded-t-xl transition-colors"
-                  >
-                    Copy Link
-                  </button>
-                  <button 
-                    onClick={(e) => e.stopPropagation()}
-                    className="w-full px-4 py-3 text-left text-slate-300 hover:text-white hover:bg-slate-700/50 transition-colors"
-                  >
-                    Share to Feed
-                  </button>
-                  <button 
-                    onClick={(e) => e.stopPropagation()}
-                    className="w-full px-4 py-3 text-left text-slate-300 hover:text-white hover:bg-slate-700/50 rounded-b-xl transition-colors"
-                  >
-                    Send Message
-                  </button>
-                </div>
-              )}
             </div>
           </div>
 
-          {/* View Post Button - Only show in feed view */}
           {!isDetailView && !isPublicView && (
             <button
               onClick={(e) => {
                 e.stopPropagation();
+                if (navigate) navigate(`/post/${post._id}`);
                 onPostClick?.(post);
               }}
               className="text-xs text-slate-500 hover:text-slate-400 transition-colors post-action-button flex items-center space-x-1"
@@ -1063,7 +1248,6 @@ const Post = React.memo(({
             </button>
           )}
 
-          {/* Public View Notice */}
           {isPublicView && (
             <button
               onClick={(e) => {
@@ -1080,7 +1264,6 @@ const Post = React.memo(({
         {/* Comments Section */}
         {showComments && !isPublicView && (
           <div className="mt-4 pt-4 border-t border-slate-600/30 space-y-4">
-            {/* Comment Input */}
             <div className="flex space-x-3">
               <div className="w-8 h-8 bg-gradient-to-r from-slate-600 to-zinc-600 rounded-full flex items-center justify-center text-white font-semibold text-xs">
                 {user?.username?.slice(0, 2).toUpperCase() || 'YU'}
@@ -1111,7 +1294,6 @@ const Post = React.memo(({
               </div>
             </div>
 
-            {/* Existing Comments */}
             {post.comments && post.comments.length > 0 && (
               <div className="space-y-3">
                 {post.comments.map((comment, idx) => (
@@ -1126,7 +1308,7 @@ const Post = React.memo(({
                             {comment.user?.username || comment.author || 'Unknown User'}
                           </span>
                           <span className="text-slate-500 text-xs">
-                            {getTimeAgo(comment.createdAt || new Date())}
+                            {getDetailedTimestamp(comment.createdAt || new Date()).relative}
                           </span>
                         </div>
                         <p className="text-slate-200 text-sm">{comment.content}</p>
@@ -1153,24 +1335,28 @@ const Post = React.memo(({
           </div>
         )}
 
-        {/* Click outside handlers */}
-        {(showShareMenu || showMoreMenu) && (
+        {(showMoreMenu) && (
           <div 
             className="fixed inset-0 z-0" 
             onClick={(e) => {
               e.stopPropagation();
-              setShowShareMenu(false);
               setShowMoreMenu(false);
             }}
           />
         )}
       </div>
 
+      {/* Share Modal */}
+      <ShareModal 
+        post={post}
+        isOpen={showShareModal}
+        onClose={() => setShowShareModal(false)}
+      />
+
       {/* Who Liked Modal */}
       {showWhoLiked && (
         <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50" onClick={() => setShowWhoLiked(false)}>
           <div className="bg-gradient-to-r from-slate-900/95 to-zinc-900/95 backdrop-blur-md rounded-2xl border border-slate-600/50 shadow-2xl max-w-md w-full mx-4 max-h-96 overflow-hidden" onClick={e => e.stopPropagation()}>
-            {/* Modal Header */}
             <div className="flex items-center justify-between p-6 border-b border-slate-600/30">
               <h3 className="text-xl font-semibold text-white">Liked by</h3>
               <button 
@@ -1181,7 +1367,6 @@ const Post = React.memo(({
               </button>
             </div>
             
-            {/* Modal Content */}
             <div className="p-4 overflow-y-auto max-h-80">
               {usersWhoLiked.length === 0 ? (
                 <div className="text-center text-slate-400 py-8">
@@ -1192,12 +1377,10 @@ const Post = React.memo(({
                 <div className="space-y-3">
                   {usersWhoLiked.map((likeUser, index) => (
                     <div key={index} className="flex items-center space-x-3 p-3 rounded-xl hover:bg-slate-800/30 transition-colors cursor-pointer">
-                      {/* User Avatar */}
                       <div className="w-10 h-10 bg-gradient-to-r from-slate-600 to-zinc-600 rounded-full flex items-center justify-center text-white font-semibold text-sm shadow-lg">
                         {likeUser.username?.slice(0, 2).toUpperCase() || likeUser.avatar || '👤'}
                       </div>
                       
-                      {/* User Info */}
                       <div className="flex-1">
                         <div className="flex items-center space-x-2">
                           <span className="font-medium text-white">{likeUser.username}</span>
@@ -1209,7 +1392,6 @@ const Post = React.memo(({
                         </div>
                       </div>
                       
-                      {/* Heart Icon */}
                       <div className="text-red-400">
                         <Heart className="h-5 w-5" fill="currentColor" />
                       </div>
@@ -1225,14 +1407,15 @@ const Post = React.memo(({
   );
 });
 
-// New PostDetail component for individual post view
+// PostDetail component for individual post view
 const PostDetail = React.memo(({ 
   post, 
   user, 
   handleLike, 
   handleComment, 
   handleShare, 
-  onBackToFeed 
+  onBackToFeed,
+  navigate 
 }) => {
   if (!post) {
     return (
@@ -1250,6 +1433,9 @@ const PostDetail = React.memo(({
     );
   }
 
+  const timestamp = getDetailedTimestamp(post.createdAt);
+  const postUrl = generatePostUrl(post._id);
+
   return (
     <div className="max-w-2xl mx-auto p-6">
       {/* Individual Post Header */}
@@ -1266,25 +1452,37 @@ const PostDetail = React.memo(({
             <div>
               <h1 className="text-xl font-bold text-white">Individual Post</h1>
               <p className="text-slate-400 text-sm">
-                by {post.userId?.username || 'Unknown User'} • {new Date(post.createdAt).toLocaleDateString()}
+                by {post.userId?.username || 'Unknown User'} • {timestamp.absolute}
               </p>
             </div>
           </div>
           
-          {/* Post Stats */}
-          <div className="flex items-center space-x-4 text-sm text-slate-400">
-            <div className="flex items-center space-x-1">
-              <Heart className="h-4 w-4" />
-              <span>{post.likes?.length || 0}</span>
+          {/* Post Stats & Share */}
+          <div className="flex items-center space-x-4">
+            <div className="flex items-center space-x-4 text-sm text-slate-400">
+              <div className="flex items-center space-x-1">
+                <Heart className="h-4 w-4" />
+                <span>{post.likes?.length || 0}</span>
+              </div>
+              <div className="flex items-center space-x-1">
+                <MessageCircle className="h-4 w-4" />
+                <span>{post.comments?.length || 0}</span>
+              </div>
+              <div className="flex items-center space-x-1">
+                <Eye className="h-4 w-4" />
+                <span>{Math.floor(Math.random() * 50) + 20}</span>
+              </div>
             </div>
-            <div className="flex items-center space-x-1">
-              <MessageCircle className="h-4 w-4" />
-              <span>{post.comments?.length || 0}</span>
-            </div>
-            <div className="flex items-center space-x-1">
-              <Eye className="h-4 w-4" />
-              <span>{Math.floor(Math.random() * 50) + 20}</span>
-            </div>
+            
+            {/* Quick Share Button */}
+            <button
+              onClick={() => navigator.clipboard.writeText(postUrl)}
+              className="flex items-center space-x-2 px-3 py-2 bg-slate-700/50 hover:bg-slate-700 rounded-lg transition-colors text-slate-300 hover:text-white"
+              title="Copy post link"
+            >
+              <Copy className="h-4 w-4" />
+              <span className="hidden sm:inline">Copy Link</span>
+            </button>
           </div>
         </div>
       </div>
@@ -1300,20 +1498,25 @@ const PostDetail = React.memo(({
         onLoginPrompt={() => {}}
         onPostClick={() => {}}
         isDetailView={true}
+        navigate={navigate}
       />
 
-      {/* Related Posts Section (optional) */}
+      {/* Related Posts Section */}
       <div className="mt-8 bg-gradient-to-r from-slate-900/40 to-zinc-900/40 backdrop-blur-md rounded-xl p-6 border border-slate-600/30">
-        <h3 className="text-lg font-semibold text-white mb-4">More from {post.userId?.username || 'this user'}</h3>
+        <h3 className="text-lg font-semibold text-white mb-4 flex items-center space-x-2">
+          <Users className="h-5 w-5" />
+          <span>More from {post.userId?.username || 'this user'}</span>
+        </h3>
         <div className="text-slate-400 text-center py-4">
           <p>No other posts to show right now</p>
+          <p className="text-sm mt-2">Check back later for more posts!</p>
         </div>
       </div>
     </div>
   );
 });
 
-// Feed component with post clicking functionality
+// Feed component with enhanced sharing
 const Feed = React.memo(({ 
   user, 
   newPost, 
@@ -1331,34 +1534,26 @@ const Feed = React.memo(({
   isPublicView = false,
   onLoginPrompt,
   onBackToHome,
-  onPostClick
+  onPostClick,
+  navigate
 }) => (
   <div className="max-w-2xl mx-auto p-6">
-    {/* Public View Header */}
     {isPublicView && (
       <div className="mb-6 bg-gradient-to-r from-slate-900/60 to-zinc-900/60 backdrop-blur-md rounded-2xl p-6 border border-slate-600/40">
         <div className="flex flex-col md:flex-row items-center md:items-center space-y-4 md:space-y-0">
-          {/* Left: Mystical Symbol */}
           <div className="relative w-8 h-8 flex-shrink-0 md:mr-0">
-            {/* Base circle from first icon */}
             <div className="absolute inset-0 bg-gradient-to-br from-purple-400 via-indigo-500 to-violet-600 rounded-full opacity-80 blur-sm animate-pulse"></div>
             <div className="absolute inset-1 bg-gradient-to-tr from-orange-400 via-amber-500 to-red-500 rounded-full opacity-90"></div>
-            
-            {/* Diamond overlay from second icon */}
             <div className="absolute inset-0 bg-gradient-to-br from-cyan-400 via-blue-500 to-indigo-600 transform rotate-45 opacity-70 blur-sm"></div>
             <div className="absolute inset-1 bg-gradient-to-tr from-amber-300 via-orange-400 to-red-400 transform rotate-45 opacity-80"></div>
-            
-            {/* Triangle overlay from third icon */}
             <div className="absolute inset-0 bg-gradient-to-bl from-violet-400 via-purple-500 to-indigo-600 opacity-60" style={{clipPath: 'polygon(50% 10%, 10% 90%, 90% 90%)'}}></div>
             <div className="absolute inset-1 bg-gradient-to-tl from-orange-300 via-amber-400 to-yellow-400 opacity-70 animate-pulse" style={{clipPath: 'polygon(50% 15%, 15% 85%, 85% 85%)'}}></div>
           </div>
           
-          {/* Center: Title (responsive) */}
           <div className="flex-1 text-center md:mx-4">
             <h1 className="text-xl md:text-2xl font-bold text-white whitespace-nowrap">SickoScoop Public Feed</h1>
           </div>
           
-          {/* Right: Button */}
           <button
             onClick={onLoginPrompt}
             className="flex-shrink-0 px-4 md:px-6 py-2 bg-gradient-to-r from-orange-300 via-red-400 via-blue-400 to-indigo-400 text-white rounded-lg hover:scale-105 transform transition-all duration-300 border-2 border-orange-300/70 hover:border-red-400 font-semibold text-sm md:text-base"
@@ -1369,7 +1564,6 @@ const Feed = React.memo(({
       </div>
     )}
 
-    {/* Post Creator - Only for logged-in users */}
     {!isPublicView && (
       <PostCreator 
         user={user}
@@ -1382,7 +1576,6 @@ const Feed = React.memo(({
       />
     )}
     
-    {/* Feed Type Toggle - Only for logged-in users */}
     {!isPublicView && (
       <div className="mb-6 flex justify-center">
         <div className="bg-gradient-to-r from-slate-900/60 to-zinc-900/60 backdrop-blur-md rounded-xl p-2 border border-slate-600/40">
@@ -1396,7 +1589,6 @@ const Feed = React.memo(({
               }`}
             >
               <div className="relative w-4 h-4">
-                {/* Mini mystical symbol */}
                 <div className="absolute inset-0 bg-gradient-to-br from-purple-400 via-indigo-500 to-violet-600 rounded-full opacity-80 animate-pulse"></div>
                 <div className="absolute inset-0.5 bg-gradient-to-tr from-cyan-400 via-blue-500 to-indigo-600 transform rotate-45 opacity-70"></div>
                 <div className="absolute inset-0 bg-gradient-to-bl from-violet-400 via-purple-500 to-indigo-600 opacity-60" style={{clipPath: 'polygon(50% 10%, 10% 90%, 90% 90%)'}}></div>
@@ -1418,13 +1610,11 @@ const Feed = React.memo(({
       </div>
     )}
 
-    {/* Feed Content */}
     {posts.length === 0 ? (
       <div className="text-center text-slate-400 py-8">
         <div className="mb-4 flex justify-center">
           {isPublicView || feedType === 'public' ? (
             <div className="relative w-12 h-12">
-              {/* Mystical symbol for loading */}
               <div className="absolute inset-0 bg-gradient-to-br from-purple-400 via-indigo-500 to-violet-600 rounded-full opacity-80 blur-sm animate-pulse"></div>
               <div className="absolute inset-1 bg-gradient-to-tr from-orange-400 via-amber-500 to-red-500 rounded-full opacity-90"></div>
               <div className="absolute inset-0 bg-gradient-to-br from-cyan-400 via-blue-500 to-indigo-600 transform rotate-45 opacity-70 blur-sm"></div>
@@ -1458,7 +1648,6 @@ const Feed = React.memo(({
             {isPublicView ? (
               <>
                 <div className="relative w-4 h-4">
-                  {/* Mini mystical symbol */}
                   <div className="absolute inset-0 bg-gradient-to-br from-purple-400 via-indigo-500 to-violet-600 rounded-full opacity-80 animate-pulse"></div>
                   <div className="absolute inset-0.5 bg-gradient-to-tr from-cyan-400 via-blue-500 to-indigo-600 transform rotate-45 opacity-70"></div>
                   <div className="absolute inset-0 bg-gradient-to-bl from-violet-400 via-purple-500 to-indigo-600 opacity-60" style={{clipPath: 'polygon(50% 10%, 10% 90%, 90% 90%)'}}></div>
@@ -1468,15 +1657,14 @@ const Feed = React.memo(({
             ) : feedType === 'public' ? (
               <>
                 <div className="relative w-4 h-4">
-                  {/* Mini mystical symbol */}
                   <div className="absolute inset-0 bg-gradient-to-br from-purple-400 via-indigo-500 to-violet-600 rounded-full opacity-80 animate-pulse"></div>
                   <div className="absolute inset-0.5 bg-gradient-to-tr from-cyan-400 via-blue-500 to-indigo-600 transform rotate-45 opacity-70"></div>
                   <div className="absolute inset-0 bg-gradient-to-bl from-violet-400 via-purple-500 to-indigo-600 opacity-60" style={{clipPath: 'polygon(50% 10%, 10% 90%, 90% 90%)'}}></div>
                 </div>
-                <span>Public Feed • {posts.length} posts from the community • Click posts to view</span>
+                <span>Public Feed • {posts.length} posts • Click to view individually or share</span>
               </>
             ) : (
-              <span>👤 Your Feed • {posts.length} personalized posts • Click posts to view</span>
+              <span>👤 Your Feed • {posts.length} personalized posts • Click to view individually or share</span>
             )}
           </p>
         </div>
@@ -1492,15 +1680,15 @@ const Feed = React.memo(({
             onLoginPrompt={onLoginPrompt}
             onPostClick={onPostClick}
             isDetailView={false}
+            navigate={navigate}
           />
         ))}
       </>
     )}
 
-    {/* Bottom CTA for public viewers */}
     {isPublicView && posts.length > 0 && (
       <div className="mt-8 text-center bg-gradient-to-r from-slate-900/40 to-zinc-900/40 backdrop-blur-md rounded-xl p-6 border border-slate-600/30">
-        <p className="text-slate-300 mb-4">Create your account to post, like, comment, and connect with the SickoScoop community.</p>
+        <p className="text-slate-300 mb-4">Create your account to post, like, comment, and share with the SickoScoop community.</p>
         <button
           onClick={onLoginPrompt}
           className="px-8 py-3 bg-gradient-to-r from-orange-300 via-red-400 via-blue-400 to-indigo-400 text-white text-lg font-semibold rounded-lg hover:scale-105 transform transition-all duration-300 border-2 border-orange-300/70 hover:border-red-400"
@@ -1567,7 +1755,6 @@ const Chat = React.memo(({
   handleSendMessage 
 }) => (
   <div className="max-w-6xl mx-auto p-6 flex flex-col lg:flex-row space-y-6 lg:space-y-0 lg:space-x-6 h-[calc(100vh-200px)]">
-    {/* Chat List */}
     <div className="w-full lg:w-1/3 bg-gradient-to-r from-slate-900/60 to-zinc-900/60 backdrop-blur-md rounded-2xl border border-slate-600/40 overflow-hidden">
       <div className="p-6 border-b border-slate-600/40">
         <h2 className="text-xl font-semibold text-white mb-4">Messages</h2>
@@ -1618,7 +1805,6 @@ const Chat = React.memo(({
       </div>
     </div>
 
-    {/* Chat Window */}
     <div className="flex-1 bg-gradient-to-r from-slate-900/40 to-zinc-900/40 backdrop-blur-md rounded-2xl border border-slate-600/30 flex flex-col min-h-96">
       {selectedChat ? (
         <>
@@ -1687,7 +1873,7 @@ const Chat = React.memo(({
   </div>
 ));
 
-// Main App Component with individual post viewing
+// Main App Component with URL routing
 const SickoScoopApp = () => {
   const [currentView, setCurrentView] = useState('landing');
   const [isLoggedIn, setIsLoggedIn] = useState(false);
@@ -1695,7 +1881,7 @@ const SickoScoopApp = () => {
   const [token, setToken] = useState(null);
   const [posts, setPosts] = useState([]);
   const [allPosts, setAllPosts] = useState([]);
-  const [selectedPost, setSelectedPost] = useState(null); // New state for individual post viewing
+  const [selectedPost, setSelectedPost] = useState(null);
   const [newPost, setNewPost] = useState('');
   const [selectedChat, setSelectedChat] = useState(null);
   const [chatMessage, setChatMessage] = useState('');
@@ -1710,8 +1896,35 @@ const SickoScoopApp = () => {
   const [feedType, setFeedType] = useState('public');
   const [isPublicBrowsing, setIsPublicBrowsing] = useState(false);
   const fileInputRef = useRef(null);
+  
+  // Add URL routing
+  const { currentPath, navigate } = useSimpleRouter();
 
-  // Fix hydration issues by ensuring client-side only operations
+  // Handle URL-based navigation
+  useEffect(() => {
+    if (!isLoggedIn) return;
+    
+    if (currentPath.startsWith('/post/')) {
+      const postId = currentPath.split('/')[2];
+      const post = allPosts.find(p => p._id === postId);
+      if (post) {
+        setSelectedPost(post);
+        setCurrentView('post');
+      } else {
+        // Post not found, redirect to feed
+        navigate('/');
+        setCurrentView('feed');
+      }
+    } else if (currentPath === '/profile') {
+      setCurrentView('profile');
+    } else if (currentPath === '/chat') {
+      setCurrentView('chat');
+    } else {
+      setCurrentView('feed');
+    }
+  }, [currentPath, isLoggedIn, allPosts, navigate]);
+
+  // Fix hydration issues
   useEffect(() => {
     setIsClient(true);
   }, []);
@@ -1749,7 +1962,7 @@ const SickoScoopApp = () => {
     }
   };
 
-  // Enhanced API call helper with better error handling and timeout
+  // API call helper
   const apiCall = async (endpoint, options = {}, customToken = null) => {
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), 10000);
@@ -2024,6 +2237,7 @@ const SickoScoopApp = () => {
         setStorageItem('authToken', data.token);
         setStorageItem('userData', JSON.stringify(data.user));
         setIsLoggedIn(true);
+        navigate('/');
         setCurrentView('feed');
         setLoginForm({ email: '', password: '' });
         setApiStatus('connected');
@@ -2097,6 +2311,7 @@ const SickoScoopApp = () => {
         setStorageItem('authToken', data.token);
         setStorageItem('userData', JSON.stringify(data.user));
         setIsLoggedIn(true);
+        navigate('/');
         setCurrentView('feed');
         setShowRegister(false);
         setRegisterForm({ username: '', email: '', password: '' });
@@ -2121,8 +2336,9 @@ const SickoScoopApp = () => {
     setUser(null);
     setIsLoggedIn(false);
     setIsPublicBrowsing(false);
+    navigate('/');
     setCurrentView('landing');
-    setSelectedPost(null); // Reset selected post
+    setSelectedPost(null);
     setApiStatus('unknown');
     setPosts([]);
     setAllPosts([]);
@@ -2206,7 +2422,6 @@ const SickoScoopApp = () => {
     setAllPosts(updatedAllPosts);
     setPosts(updatedDisplayedPosts);
 
-    // Update selected post if it's the one being liked
     if (selectedPost && selectedPost._id === postId) {
       setSelectedPost(updatePostLikes([selectedPost])[0]);
     }
@@ -2260,7 +2475,6 @@ const SickoScoopApp = () => {
     setPosts(updatePostComments);
     setAllPosts(updatePostComments);
 
-    // Update selected post if it's the one being commented on
     if (selectedPost && selectedPost._id === postId) {
       setSelectedPost(prev => ({
         ...prev,
@@ -2277,21 +2491,21 @@ const SickoScoopApp = () => {
   }, [user, apiStatus, token, selectedPost]);
 
   const handleShare = useCallback((postId) => {
-    const postUrl = `${window.location.origin}/post/${postId}`;
+    const postUrl = generatePostUrl(postId);
     navigator.clipboard.writeText(postUrl).then(() => {
       console.log('Link copied to clipboard!');
     }).catch(console.error);
   }, []);
 
-  // New function to handle clicking on a post to view individually
   const handlePostClick = (post) => {
     setSelectedPost(post);
+    navigate(`/post/${post._id}`);
     setCurrentView('post');
   };
 
-  // New function to go back to feed from individual post view
   const handleBackToFeed = () => {
     setSelectedPost(null);
+    navigate('/');
     setCurrentView('feed');
   };
 
@@ -2374,7 +2588,8 @@ const SickoScoopApp = () => {
               isPublicView={true}
               onLoginPrompt={handleLoginPrompt}
               onBackToHome={handleBackToHome}
-              onPostClick={handleLoginPrompt} // Redirect to login when clicking posts in public view
+              onPostClick={handleLoginPrompt}
+              navigate={navigate}
             />
           </main>
         </div>
@@ -2425,6 +2640,7 @@ const SickoScoopApp = () => {
           user={user}
           selectedPost={selectedPost}
           onBackToFeed={handleBackToFeed}
+          navigate={navigate}
         />
         <main className="container mx-auto">
           {currentView === 'feed' && (
@@ -2445,7 +2661,8 @@ const SickoScoopApp = () => {
               isPublicView={false}
               onLoginPrompt={() => {}}
               onBackToHome={() => {}}
-              onPostClick={handlePostClick} // Pass the post click handler
+              onPostClick={handlePostClick}
+              navigate={navigate}
             />
           )}
           {currentView === 'post' && (
@@ -2456,6 +2673,7 @@ const SickoScoopApp = () => {
               handleComment={handleComment}
               handleShare={handleShare}
               onBackToFeed={handleBackToFeed}
+              navigate={navigate}
             />
           )}
           {currentView === 'profile' && (
