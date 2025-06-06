@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react';
-import { Heart, MessageCircle, Share2, Send, Upload, Image, Video, FileText, Mic, User, Search, Settings, Plus, X, MoreHorizontal, Flag, Bookmark, Eye } from 'lucide-react';
+import { Heart, MessageCircle, Share2, Send, Upload, Image, Video, FileText, Mic, User, Search, Settings, Plus, X, MoreHorizontal, Flag, Bookmark, Eye, ArrowLeft, Clock, Users } from 'lucide-react';
 
 const API_BASE = window.location.hostname === 'localhost' 
   ? 'http://localhost:3001/api'
@@ -48,8 +48,6 @@ const LandingPage = React.memo(({
           SICKOSCOOP
         </span>
       </h1>
-
-      {/* Subtitle - REMOVED revelation & transparency */}
 
       {/* Browse Public Feed Button - Moved Higher */}
       <div className="mb-8 flex flex-col items-center">
@@ -213,13 +211,15 @@ const LandingPage = React.memo(({
   </div>
 ));
 
-// Move ConnectionStatus outside to prevent re-creation
+// Header component with individual post view support
 const Header = React.memo(({ 
   currentView, 
   setCurrentView, 
   apiStatus, 
   handleLogout, 
-  user 
+  user,
+  selectedPost,
+  onBackToFeed
 }) => {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [isSearchOpen, setIsSearchOpen] = useState(false);
@@ -229,8 +229,19 @@ const Header = React.memo(({
       <div className="container mx-auto px-4 py-3">
         {/* Main Header Row */}
         <div className="flex items-center justify-between">
-          {/* Left: Logo + Mobile Menu Button */}
+          {/* Left: Logo + Mobile Menu Button + Back Button for Post View */}
           <div className="flex items-center space-x-3 flex-shrink-0">
+            {/* Back button for individual post view */}
+            {currentView === 'post' && (
+              <button
+                onClick={onBackToFeed}
+                className="p-2 text-slate-300 hover:text-white transition-colors rounded-lg hover:bg-slate-800/50 mr-2"
+                title="Back to Feed"
+              >
+                <ArrowLeft className="h-5 w-5" />
+              </button>
+            )}
+            
             <div className="text-xl md:text-2xl lg:text-3xl font-bold bg-gradient-to-r from-slate-300 to-purple-400 bg-clip-text text-transparent">
               SickoScoop
             </div>
@@ -248,64 +259,75 @@ const Header = React.memo(({
             </button>
           </div>
 
-          {/* Center: Desktop Navigation */}
+          {/* Center: Navigation or Post Title */}
           <div className="hidden md:flex items-center space-x-3 flex-1 justify-center max-w-2xl">
-            {/* Navigation Buttons */}
-            <div className="flex space-x-3">
-              <button
-                onClick={() => setCurrentView('feed')}
-                className={`px-4 py-2 rounded-lg border-2 transition-all duration-200 font-medium text-sm lg:text-base ${
-                  currentView === 'feed' 
-                    ? 'bg-slate-700 text-white border-amber-500 shadow-lg shadow-amber-500/20' 
-                    : 'text-slate-300 hover:text-white border-amber-600/50 hover:border-amber-500 hover:bg-slate-800/50'
-                }`}
-              >
-                Feed
-              </button>
-              <button
-                onClick={() => setCurrentView('profile')}
-                className={`px-4 py-2 rounded-lg border-2 transition-all duration-200 font-medium text-sm lg:text-base ${
-                  currentView === 'profile' 
-                    ? 'bg-slate-700 text-white border-amber-500 shadow-lg shadow-amber-500/20' 
-                    : 'text-slate-300 hover:text-white border-amber-600/50 hover:border-amber-500 hover:bg-slate-800/50'
-                }`}
-              >
-                Profile
-              </button>
-              <button
-                onClick={() => setCurrentView('chat')}
-                className={`px-4 py-2 rounded-lg border-2 transition-all duration-200 font-medium text-sm lg:text-base ${
-                  currentView === 'chat' 
-                    ? 'bg-slate-700 text-white border-amber-500 shadow-lg shadow-amber-500/20' 
-                    : 'text-slate-300 hover:text-white border-amber-600/50 hover:border-amber-500 hover:bg-slate-800/50'
-                }`}
-              >
-                Chat
-              </button>
-            </div>
+            {currentView === 'post' ? (
+              // Post title in header
+              <div className="text-center text-slate-300">
+                <span className="text-lg font-medium">Post by {selectedPost?.userId?.username || 'Unknown User'}</span>
+              </div>
+            ) : (
+              // Regular Navigation
+              <>
+                <div className="flex space-x-3">
+                  <button
+                    onClick={() => setCurrentView('feed')}
+                    className={`px-4 py-2 rounded-lg border-2 transition-all duration-200 font-medium text-sm lg:text-base ${
+                      currentView === 'feed' 
+                        ? 'bg-slate-700 text-white border-amber-500 shadow-lg shadow-amber-500/20' 
+                        : 'text-slate-300 hover:text-white border-amber-600/50 hover:border-amber-500 hover:bg-slate-800/50'
+                    }`}
+                  >
+                    Feed
+                  </button>
+                  <button
+                    onClick={() => setCurrentView('profile')}
+                    className={`px-4 py-2 rounded-lg border-2 transition-all duration-200 font-medium text-sm lg:text-base ${
+                      currentView === 'profile' 
+                        ? 'bg-slate-700 text-white border-amber-500 shadow-lg shadow-amber-500/20' 
+                        : 'text-slate-300 hover:text-white border-amber-600/50 hover:border-amber-500 hover:bg-slate-800/50'
+                    }`}
+                  >
+                    Profile
+                  </button>
+                  <button
+                    onClick={() => setCurrentView('chat')}
+                    className={`px-4 py-2 rounded-lg border-2 transition-all duration-200 font-medium text-sm lg:text-base ${
+                      currentView === 'chat' 
+                        ? 'bg-slate-700 text-white border-amber-500 shadow-lg shadow-amber-500/20' 
+                        : 'text-slate-300 hover:text-white border-amber-600/50 hover:border-amber-500 hover:bg-slate-800/50'
+                    }`}
+                  >
+                    Chat
+                  </button>
+                </div>
 
-            {/* Desktop Search - Reduced width for better spacing */}
-            <div className="hidden lg:block relative ml-4">
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-slate-500" />
-              <input
-                type="text"
-                placeholder="Search sicko..."
-                className="w-64 xl:w-72 pl-10 pr-4 py-2 bg-black/40 border border-slate-600/60 rounded-full text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-amber-500/50 focus:border-amber-500/70 transition-all duration-200 text-sm"  
-              />
-            </div>
+                {/* Desktop Search - Reduced width for better spacing */}
+                <div className="hidden lg:block relative ml-4">
+                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-slate-500" />
+                  <input
+                    type="text"
+                    placeholder="Search sicko..."
+                    className="w-64 xl:w-72 pl-10 pr-4 py-2 bg-black/40 border border-slate-600/60 rounded-full text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-amber-500/50 focus:border-amber-500/70 transition-all duration-200 text-sm"  
+                  />
+                </div>
+              </>
+            )}
           </div>
 
-          {/* Right: Actions - Reordered with user icon first */}
+          {/* Right: Actions */}
           <div className="flex items-center flex-shrink-0 mr-2">
-            {/* Mobile Search Button */}
-            <button
-              onClick={() => setIsSearchOpen(!isSearchOpen)}
-              className="lg:hidden p-2 text-slate-300 hover:text-white transition-colors rounded-lg hover:bg-slate-800/50 mr-3"
-            >
-              <Search className="h-5 w-5" />
-            </button>
+            {/* Mobile Search Button - Hide in post view */}
+            {currentView !== 'post' && (
+              <button
+                onClick={() => setIsSearchOpen(!isSearchOpen)}
+                className="lg:hidden p-2 text-slate-300 hover:text-white transition-colors rounded-lg hover:bg-slate-800/50 mr-3"
+              >
+                <Search className="h-5 w-5" />
+              </button>
+            )}
 
-            {/* User Avatar - Now first position */}
+            {/* User Avatar */}
             <div 
               className="w-10 h-10 rounded-full flex items-center justify-center font-bold shadow-lg transition-all duration-200 cursor-pointer hover:scale-110 hover:shadow-xl text-sm bg-gradient-to-r from-amber-500 to-orange-600 border-2 border-amber-500/80 text-white mr-3"
               onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
@@ -313,12 +335,12 @@ const Header = React.memo(({
               {user?.username?.slice(0, 2).toUpperCase() || 'YU'}
             </div>
 
-            {/* Settings Button - Now second to last */}
+            {/* Settings Button */}
             <button className="p-2 text-slate-300 hover:text-white transition-colors duration-200 hover:bg-slate-800/50 rounded-lg mr-3">
               <Settings className="h-5 w-5" />
             </button>
             
-            {/* Logout Button - Now last position */}
+            {/* Logout Button */}
             <button
               onClick={handleLogout}
               className="hidden sm:flex px-3 py-2 text-sm rounded-lg transition-all duration-200 hover:scale-105 bg-slate-700/40 text-slate-300 border-2 border-amber-600/40 hover:border-amber-500 hover:bg-slate-700/60 hover:text-white font-semibold"
@@ -328,8 +350,8 @@ const Header = React.memo(({
           </div>
         </div>
 
-        {/* Mobile Search Bar */}
-        {isSearchOpen && (
+        {/* Mobile Search Bar - Hide in post view */}
+        {isSearchOpen && currentView !== 'post' && (
           <div className="mt-3 lg:hidden">
             <div className="relative">
               <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-slate-500" />
@@ -347,51 +369,69 @@ const Header = React.memo(({
         {isMobileMenuOpen && (
           <div className="md:hidden mt-4 pb-2 bg-black/20 rounded-xl p-4 border border-slate-600/30">
             <div className="flex flex-col space-y-3">
-              {/* Navigation Buttons */}
-              <button
-                onClick={() => {
-                  setCurrentView('feed');
-                  setIsMobileMenuOpen(false);
-                }}
-                className={`px-4 py-3 rounded-lg border-2 transition-all duration-200 font-medium text-left flex items-center space-x-3 ${
-                  currentView === 'feed' 
-                    ? 'bg-slate-700 text-white border-amber-500 shadow-lg shadow-amber-500/20' 
-                    : 'text-slate-300 hover:text-white border-amber-600/50 hover:border-amber-500 hover:bg-slate-800/50'
-                }`}
-              >
-                <span className="text-lg">📱</span>
-                <span>Feed</span>
-              </button>
+              {/* Back button for mobile in post view */}
+              {currentView === 'post' && (
+                <button
+                  onClick={() => {
+                    onBackToFeed();
+                    setIsMobileMenuOpen(false);
+                  }}
+                  className="px-4 py-3 rounded-lg border-2 border-amber-600/50 bg-slate-700/40 text-slate-300 hover:text-white hover:border-amber-500 hover:bg-slate-700/60 transition-all duration-200 font-medium text-left flex items-center space-x-3"
+                >
+                  <ArrowLeft className="h-5 w-5" />
+                  <span>Back to Feed</span>
+                </button>
+              )}
               
-              <button
-                onClick={() => {
-                  setCurrentView('profile');
-                  setIsMobileMenuOpen(false);
-                }}
-                className={`px-4 py-3 rounded-lg border-2 transition-all duration-200 font-medium text-left flex items-center space-x-3 ${
-                  currentView === 'profile' 
-                    ? 'bg-slate-700 text-white border-amber-500 shadow-lg shadow-amber-500/20' 
-                    : 'text-slate-300 hover:text-white border-amber-600/50 hover:border-amber-500 hover:bg-slate-800/50'
-                }`}
-              >
-                <span className="text-lg">👤</span>
-                <span>Profile</span>
-              </button>
-              
-              <button
-                onClick={() => {
-                  setCurrentView('chat');
-                  setIsMobileMenuOpen(false);
-                }}
-                className={`px-4 py-3 rounded-lg border-2 transition-all duration-200 font-medium text-left flex items-center space-x-3 ${
-                  currentView === 'chat' 
-                    ? 'bg-slate-700 text-white border-amber-500 shadow-lg shadow-amber-500/20' 
-                    : 'text-slate-300 hover:text-white border-amber-600/50 hover:border-amber-500 hover:bg-slate-800/50'
-                }`}
-              >
-                <span className="text-lg">💬</span>
-                <span>Chat</span>
-              </button>
+              {/* Navigation Buttons - Hide in post view */}
+              {currentView !== 'post' && (
+                <>
+                  <button
+                    onClick={() => {
+                      setCurrentView('feed');
+                      setIsMobileMenuOpen(false);
+                    }}
+                    className={`px-4 py-3 rounded-lg border-2 transition-all duration-200 font-medium text-left flex items-center space-x-3 ${
+                      currentView === 'feed' 
+                        ? 'bg-slate-700 text-white border-amber-500 shadow-lg shadow-amber-500/20' 
+                        : 'text-slate-300 hover:text-white border-amber-600/50 hover:border-amber-500 hover:bg-slate-800/50'
+                    }`}
+                  >
+                    <span className="text-lg">📱</span>
+                    <span>Feed</span>
+                  </button>
+                  
+                  <button
+                    onClick={() => {
+                      setCurrentView('profile');
+                      setIsMobileMenuOpen(false);
+                    }}
+                    className={`px-4 py-3 rounded-lg border-2 transition-all duration-200 font-medium text-left flex items-center space-x-3 ${
+                      currentView === 'profile' 
+                        ? 'bg-slate-700 text-white border-amber-500 shadow-lg shadow-amber-500/20' 
+                        : 'text-slate-300 hover:text-white border-amber-600/50 hover:border-amber-500 hover:bg-slate-800/50'
+                    }`}
+                  >
+                    <span className="text-lg">👤</span>
+                    <span>Profile</span>
+                  </button>
+                  
+                  <button
+                    onClick={() => {
+                      setCurrentView('chat');
+                      setIsMobileMenuOpen(false);
+                    }}
+                    className={`px-4 py-3 rounded-lg border-2 transition-all duration-200 font-medium text-left flex items-center space-x-3 ${
+                      currentView === 'chat' 
+                        ? 'bg-slate-700 text-white border-amber-500 shadow-lg shadow-amber-500/20' 
+                        : 'text-slate-300 hover:text-white border-amber-600/50 hover:border-amber-500 hover:bg-slate-800/50'
+                    }`}
+                  >
+                    <span className="text-lg">💬</span>
+                    <span>Chat</span>
+                  </button>
+                </>
+              )}
               
               {/* Divider */}
               <div className="border-t border-slate-600/40 my-2"></div>
@@ -415,9 +455,7 @@ const Header = React.memo(({
   );
 });
 
-// Move PostCreator outside to prevent re-creation - THIS FIXES THE TYPING ISSUE
-// Updated PostCreator component - replace the existing one in your App.js
-// Replace your existing PostCreator component (around line 306) with this:
+// PostCreator component (unchanged)
 const PostCreator = React.memo(({ 
   user, 
   newPost, 
@@ -597,17 +635,23 @@ const PostCreator = React.memo(({
   );
 });
 
-// Move Post component outside to prevent re-creation
-// Enhanced Post component with comments, sharing, and more features
-// Enhanced Post component with "Who Liked" functionality
-// Replace your existing Post component in App.js with this updated version
-
-const Post = React.memo(({ post, user, handleLike, handleComment, handleShare, isPublicView = false, onLoginPrompt }) => {
-  const [showComments, setShowComments] = useState(false);
+// Enhanced Post component with click-to-view functionality
+const Post = React.memo(({ 
+  post, 
+  user, 
+  handleLike, 
+  handleComment, 
+  handleShare, 
+  isPublicView = false, 
+  onLoginPrompt,
+  onPostClick,
+  isDetailView = false  // New prop to indicate if this is the detailed view
+}) => {
+  const [showComments, setShowComments] = useState(isDetailView); // Show comments by default in detail view
   const [commentText, setCommentText] = useState('');
   const [showShareMenu, setShowShareMenu] = useState(false);
   const [showMoreMenu, setShowMoreMenu] = useState(false);
-  const [showWhoLiked, setShowWhoLiked] = useState(false); // New state for who liked modal
+  const [showWhoLiked, setShowWhoLiked] = useState(false);
   const [isLiking, setIsLiking] = useState(false);
   const commentInputRef = useRef(null);
 
@@ -678,6 +722,29 @@ const Post = React.memo(({ post, user, handleLike, handleComment, handleShare, i
     setShowWhoLiked(true);
   };
 
+  // Handle post content click - navigate to individual post view
+  const handlePostContentClick = (e) => {
+    // Don't navigate if clicking on interactive elements
+    if (e.target.closest('button') || 
+        e.target.closest('input') || 
+        e.target.closest('a') ||
+        e.target.closest('.post-action-button') ||
+        showShareMenu || 
+        showMoreMenu || 
+        showWhoLiked ||
+        isDetailView) {
+      return;
+    }
+
+    if (isPublicView) {
+      onLoginPrompt?.();
+      return;
+    }
+
+    // Navigate to individual post view
+    onPostClick?.(post);
+  };
+
   // Check if user liked the post
   const isLiked = !isPublicView && post.likes?.some(like => 
     (typeof like === 'string' ? like : like.user || like._id) === (user?._id || user?.id)
@@ -723,7 +790,12 @@ const Post = React.memo(({ post, user, handleLike, handleComment, handleShare, i
 
   return (
     <>
-      <div className="bg-gradient-to-r from-slate-900/40 to-zinc-900/40 backdrop-blur-md rounded-2xl p-6 border border-slate-600/30 mb-6 hover:border-slate-500/50 transition-all duration-300 group">
+      <div 
+        className={`bg-gradient-to-r from-slate-900/40 to-zinc-900/40 backdrop-blur-md rounded-2xl p-6 border border-slate-600/30 mb-6 transition-all duration-300 group ${
+          !isDetailView && !isPublicView ? 'hover:border-slate-500/50 cursor-pointer hover:bg-slate-800/30' : ''
+        }`}
+        onClick={handlePostContentClick}
+      >
         {/* Post Header */}
         <div className="flex items-start justify-between mb-4">
           <div className="flex items-start space-x-4">
@@ -744,8 +816,9 @@ const Post = React.memo(({ post, user, handleLike, handleComment, handleShare, i
                   </div>
                 )}
                 <span className="text-slate-400 text-sm">•</span>
-                <span className="text-slate-400 text-sm hover:text-slate-300 cursor-pointer" title={new Date(post.createdAt).toLocaleString()}>
-                  {getTimeAgo(post.createdAt)}
+                <span className="text-slate-400 text-sm hover:text-slate-300 cursor-pointer flex items-center space-x-1" title={new Date(post.createdAt).toLocaleString()}>
+                  <Clock className="h-3 w-3" />
+                  <span>{getTimeAgo(post.createdAt)}</span>
                 </span>
               </div>
               
@@ -764,19 +837,41 @@ const Post = React.memo(({ post, user, handleLike, handleComment, handleShare, i
           {/* More Menu */}
           <div className="relative">
             <button 
-              onClick={() => setShowMoreMenu(!showMoreMenu)}
-              className="p-2 text-slate-400 hover:text-white hover:bg-slate-700/50 rounded-lg transition-colors opacity-0 group-hover:opacity-100"
+              onClick={(e) => {
+                e.stopPropagation();
+                setShowMoreMenu(!showMoreMenu);
+              }}
+              className="p-2 text-slate-400 hover:text-white hover:bg-slate-700/50 rounded-lg transition-colors opacity-0 group-hover:opacity-100 post-action-button"
             >
               <MoreHorizontal className="h-5 w-5" />
             </button>
             
             {showMoreMenu && (
               <div className="absolute right-0 top-10 bg-slate-800/90 backdrop-blur-md rounded-xl border border-slate-600/50 shadow-xl z-10 min-w-48">
-                <button className="w-full px-4 py-3 text-left text-slate-300 hover:text-white hover:bg-slate-700/50 rounded-t-xl transition-colors flex items-center space-x-2">
+                <button 
+                  onClick={(e) => e.stopPropagation()}
+                  className="w-full px-4 py-3 text-left text-slate-300 hover:text-white hover:bg-slate-700/50 rounded-t-xl transition-colors flex items-center space-x-2"
+                >
                   <Bookmark className="h-4 w-4" />
                   <span>Save Post</span>
                 </button>
-                <button className="w-full px-4 py-3 text-left text-slate-300 hover:text-white hover:bg-slate-700/50 transition-colors flex items-center space-x-2">
+                {!isDetailView && (
+                  <button 
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      onPostClick?.(post);
+                      setShowMoreMenu(false);
+                    }}
+                    className="w-full px-4 py-3 text-left text-slate-300 hover:text-white hover:bg-slate-700/50 transition-colors flex items-center space-x-2"
+                  >
+                    <Eye className="h-4 w-4" />
+                    <span>View Post</span>
+                  </button>
+                )}
+                <button 
+                  onClick={(e) => e.stopPropagation()}
+                  className="w-full px-4 py-3 text-left text-slate-300 hover:text-white hover:bg-slate-700/50 rounded-b-xl transition-colors flex items-center space-x-2"
+                >
                   <Flag className="h-4 w-4" />
                   <span>Report</span>
                 </button>
@@ -802,24 +897,25 @@ const Post = React.memo(({ post, user, handleLike, handleComment, handleShare, i
                     src={file.url} 
                     alt="Post media" 
                     className="w-full h-auto max-h-96 object-cover hover:scale-105 transition-transform duration-300 cursor-pointer" 
+                    onClick={(e) => e.stopPropagation()}
                   />
                 )}
                 {file.type === 'video' && (
-                  <video controls className="w-full h-auto max-h-96 bg-black">
+                  <video controls className="w-full h-auto max-h-96 bg-black" onClick={(e) => e.stopPropagation()}>
                     <source src={file.url} />
                     Your browser does not support video playback.
                   </video>
                 )}
                 {file.type === 'audio' && (
                   <div className="p-4 bg-slate-800/50">
-                    <audio controls className="w-full">
+                    <audio controls className="w-full" onClick={(e) => e.stopPropagation()}>
                       <source src={file.url} />
                       Your browser does not support audio playback.
                     </audio>
                   </div>
                 )}
                 {file.type === 'pdf' && (
-                  <div className="p-4 bg-slate-800/50 flex items-center space-x-3">
+                  <div className="p-4 bg-slate-800/50 flex items-center space-x-3" onClick={(e) => e.stopPropagation()}>
                     <div className="w-10 h-10 bg-red-500/20 rounded-lg flex items-center justify-center">
                       <span className="text-red-400 text-sm font-bold">PDF</span>
                     </div>
@@ -840,8 +936,11 @@ const Post = React.memo(({ post, user, handleLike, handleComment, handleShare, i
             <div className="flex items-center space-x-4">
               {likeCount > 0 && (
                 <button 
-                  onClick={handleWhoLikedClick}
-                  className="flex items-center space-x-1 hover:text-slate-300 transition-colors cursor-pointer group"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    handleWhoLikedClick();
+                  }}
+                  className="flex items-center space-x-1 hover:text-slate-300 transition-colors cursor-pointer group post-action-button"
                   title={isPublicView ? "Sign up to see who liked this" : "See who liked this post"}
                 >
                   <div className="flex -space-x-1">
@@ -856,7 +955,10 @@ const Post = React.memo(({ post, user, handleLike, handleComment, handleShare, i
                 </button>
               )}
               {commentCount > 0 && (
-                <span>{commentCount} {commentCount === 1 ? 'comment' : 'comments'}</span>
+                <div className="flex items-center space-x-1">
+                  <Users className="h-4 w-4" />
+                  <span>{commentCount} {commentCount === 1 ? 'comment' : 'comments'}</span>
+                </div>
               )}
             </div>
             <div className="flex items-center space-x-1">
@@ -871,8 +973,11 @@ const Post = React.memo(({ post, user, handleLike, handleComment, handleShare, i
           <div className="flex items-center space-x-1">
             {/* Like Button */}
             <button 
-              onClick={handleLikeClick}
-              className={`flex items-center space-x-2 px-3 py-2 rounded-lg transition-all duration-200 ${
+              onClick={(e) => {
+                e.stopPropagation();
+                handleLikeClick();
+              }}
+              className={`flex items-center space-x-2 px-3 py-2 rounded-lg transition-all duration-200 post-action-button ${
                 isLiked 
                   ? 'text-red-400 bg-red-500/10 hover:bg-red-500/20' 
                   : 'text-slate-400 hover:text-red-400 hover:bg-red-500/10'
@@ -888,7 +993,8 @@ const Post = React.memo(({ post, user, handleLike, handleComment, handleShare, i
 
             {/* Comment Button */}
             <button 
-              onClick={() => {
+              onClick={(e) => {
+                e.stopPropagation();
                 if (isPublicView) {
                   onLoginPrompt?.();
                 } else {
@@ -896,7 +1002,7 @@ const Post = React.memo(({ post, user, handleLike, handleComment, handleShare, i
                   setTimeout(() => commentInputRef.current?.focus(), 100);
                 }
               }}
-              className="flex items-center space-x-2 px-3 py-2 rounded-lg text-slate-400 hover:text-indigo-400 hover:bg-indigo-500/10 transition-all duration-200"
+              className="flex items-center space-x-2 px-3 py-2 rounded-lg text-slate-400 hover:text-indigo-400 hover:bg-indigo-500/10 transition-all duration-200 post-action-button"
               title={isPublicView ? "Sign up to comment" : "Comment on this post"}
             >
               <MessageCircle className="h-5 w-5" />
@@ -906,8 +1012,11 @@ const Post = React.memo(({ post, user, handleLike, handleComment, handleShare, i
             {/* Share Button */}
             <div className="relative">
               <button 
-                onClick={handleShareClick}
-                className="flex items-center space-x-2 px-3 py-2 rounded-lg text-slate-400 hover:text-green-400 hover:bg-green-500/10 transition-all duration-200"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  handleShareClick();
+                }}
+                className="flex items-center space-x-2 px-3 py-2 rounded-lg text-slate-400 hover:text-green-400 hover:bg-green-500/10 transition-all duration-200 post-action-button"
                 title={isPublicView ? "Sign up to share" : "Share this post"}
               >
                 <Share2 className="h-5 w-5" />
@@ -917,13 +1026,22 @@ const Post = React.memo(({ post, user, handleLike, handleComment, handleShare, i
               {/* Share Menu */}
               {showShareMenu && (
                 <div className="absolute left-0 top-12 bg-slate-800/90 backdrop-blur-md rounded-xl border border-slate-600/50 shadow-xl z-10 min-w-48">
-                  <button className="w-full px-4 py-3 text-left text-slate-300 hover:text-white hover:bg-slate-700/50 rounded-t-xl transition-colors">
+                  <button 
+                    onClick={(e) => e.stopPropagation()}
+                    className="w-full px-4 py-3 text-left text-slate-300 hover:text-white hover:bg-slate-700/50 rounded-t-xl transition-colors"
+                  >
                     Copy Link
                   </button>
-                  <button className="w-full px-4 py-3 text-left text-slate-300 hover:text-white hover:bg-slate-700/50 transition-colors">
+                  <button 
+                    onClick={(e) => e.stopPropagation()}
+                    className="w-full px-4 py-3 text-left text-slate-300 hover:text-white hover:bg-slate-700/50 transition-colors"
+                  >
                     Share to Feed
                   </button>
-                  <button className="w-full px-4 py-3 text-left text-slate-300 hover:text-white hover:bg-slate-700/50 rounded-b-xl transition-colors">
+                  <button 
+                    onClick={(e) => e.stopPropagation()}
+                    className="w-full px-4 py-3 text-left text-slate-300 hover:text-white hover:bg-slate-700/50 rounded-b-xl transition-colors"
+                  >
                     Send Message
                   </button>
                 </div>
@@ -931,11 +1049,28 @@ const Post = React.memo(({ post, user, handleLike, handleComment, handleShare, i
             </div>
           </div>
 
+          {/* View Post Button - Only show in feed view */}
+          {!isDetailView && !isPublicView && (
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                onPostClick?.(post);
+              }}
+              className="text-xs text-slate-500 hover:text-slate-400 transition-colors post-action-button flex items-center space-x-1"
+            >
+              <Eye className="h-3 w-3" />
+              <span>View Post</span>
+            </button>
+          )}
+
           {/* Public View Notice */}
           {isPublicView && (
             <button
-              onClick={onLoginPrompt}
-              className="text-xs text-slate-500 hover:text-slate-400 transition-colors"
+              onClick={(e) => {
+                e.stopPropagation();
+                onLoginPrompt();
+              }}
+              className="text-xs text-slate-500 hover:text-slate-400 transition-colors post-action-button"
             >
               Join to interact →
             </button>
@@ -958,13 +1093,17 @@ const Post = React.memo(({ post, user, handleLike, handleComment, handleShare, i
                     value={commentText}
                     onChange={(e) => setCommentText(e.target.value)}
                     onKeyPress={(e) => e.key === 'Enter' && handleCommentSubmit()}
+                    onClick={(e) => e.stopPropagation()}
                     placeholder="Write a comment..."
                     className="flex-1 px-4 py-2 bg-black/40 border border-slate-600/50 rounded-full text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-slate-400 focus:border-slate-400"
                   />
                   <button
-                    onClick={handleCommentSubmit}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleCommentSubmit();
+                    }}
                     disabled={!commentText.trim()}
-                    className="px-4 py-2 bg-gradient-to-r from-slate-700 to-zinc-700 text-white rounded-full hover:scale-105 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
+                    className="px-4 py-2 bg-gradient-to-r from-slate-700 to-zinc-700 text-white rounded-full hover:scale-105 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed post-action-button"
                   >
                     <Send className="h-4 w-4" />
                   </button>
@@ -993,10 +1132,16 @@ const Post = React.memo(({ post, user, handleLike, handleComment, handleShare, i
                         <p className="text-slate-200 text-sm">{comment.content}</p>
                       </div>
                       <div className="flex items-center space-x-4 mt-1 px-4">
-                        <button className="text-xs text-slate-500 hover:text-slate-400 transition-colors">
+                        <button 
+                          onClick={(e) => e.stopPropagation()}
+                          className="text-xs text-slate-500 hover:text-slate-400 transition-colors post-action-button"
+                        >
                           Like
                         </button>
-                        <button className="text-xs text-slate-500 hover:text-slate-400 transition-colors">
+                        <button 
+                          onClick={(e) => e.stopPropagation()}
+                          className="text-xs text-slate-500 hover:text-slate-400 transition-colors post-action-button"
+                        >
                           Reply
                         </button>
                       </div>
@@ -1012,7 +1157,8 @@ const Post = React.memo(({ post, user, handleLike, handleComment, handleShare, i
         {(showShareMenu || showMoreMenu) && (
           <div 
             className="fixed inset-0 z-0" 
-            onClick={() => {
+            onClick={(e) => {
+              e.stopPropagation();
               setShowShareMenu(false);
               setShowMoreMenu(false);
             }}
@@ -1079,7 +1225,95 @@ const Post = React.memo(({ post, user, handleLike, handleComment, handleShare, i
   );
 });
 
-// Move Feed component outside to prevent re-creation
+// New PostDetail component for individual post view
+const PostDetail = React.memo(({ 
+  post, 
+  user, 
+  handleLike, 
+  handleComment, 
+  handleShare, 
+  onBackToFeed 
+}) => {
+  if (!post) {
+    return (
+      <div className="max-w-2xl mx-auto p-6">
+        <div className="text-center text-slate-400 py-8">
+          <p>Post not found</p>
+          <button
+            onClick={onBackToFeed}
+            className="mt-4 px-4 py-2 bg-slate-700 text-white rounded-lg hover:bg-slate-600 transition-colors"
+          >
+            Back to Feed
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="max-w-2xl mx-auto p-6">
+      {/* Individual Post Header */}
+      <div className="mb-6 bg-gradient-to-r from-slate-900/60 to-zinc-900/60 backdrop-blur-md rounded-2xl p-6 border border-slate-600/40">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center space-x-4">
+            <button
+              onClick={onBackToFeed}
+              className="p-2 text-slate-300 hover:text-white transition-colors rounded-lg hover:bg-slate-800/50"
+              title="Back to Feed"
+            >
+              <ArrowLeft className="h-5 w-5" />
+            </button>
+            <div>
+              <h1 className="text-xl font-bold text-white">Individual Post</h1>
+              <p className="text-slate-400 text-sm">
+                by {post.userId?.username || 'Unknown User'} • {new Date(post.createdAt).toLocaleDateString()}
+              </p>
+            </div>
+          </div>
+          
+          {/* Post Stats */}
+          <div className="flex items-center space-x-4 text-sm text-slate-400">
+            <div className="flex items-center space-x-1">
+              <Heart className="h-4 w-4" />
+              <span>{post.likes?.length || 0}</span>
+            </div>
+            <div className="flex items-center space-x-1">
+              <MessageCircle className="h-4 w-4" />
+              <span>{post.comments?.length || 0}</span>
+            </div>
+            <div className="flex items-center space-x-1">
+              <Eye className="h-4 w-4" />
+              <span>{Math.floor(Math.random() * 50) + 20}</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* The actual post with comments expanded by default */}
+      <Post 
+        post={post}
+        user={user}
+        handleLike={handleLike}
+        handleComment={handleComment}
+        handleShare={handleShare}
+        isPublicView={false}
+        onLoginPrompt={() => {}}
+        onPostClick={() => {}}
+        isDetailView={true}
+      />
+
+      {/* Related Posts Section (optional) */}
+      <div className="mt-8 bg-gradient-to-r from-slate-900/40 to-zinc-900/40 backdrop-blur-md rounded-xl p-6 border border-slate-600/30">
+        <h3 className="text-lg font-semibold text-white mb-4">More from {post.userId?.username || 'this user'}</h3>
+        <div className="text-slate-400 text-center py-4">
+          <p>No other posts to show right now</p>
+        </div>
+      </div>
+    </div>
+  );
+});
+
+// Feed component with post clicking functionality
 const Feed = React.memo(({ 
   user, 
   newPost, 
@@ -1096,7 +1330,8 @@ const Feed = React.memo(({
   setFeedType,
   isPublicView = false,
   onLoginPrompt,
-  onBackToHome
+  onBackToHome,
+  onPostClick
 }) => (
   <div className="max-w-2xl mx-auto p-6">
     {/* Public View Header */}
@@ -1238,10 +1473,10 @@ const Feed = React.memo(({
                   <div className="absolute inset-0.5 bg-gradient-to-tr from-cyan-400 via-blue-500 to-indigo-600 transform rotate-45 opacity-70"></div>
                   <div className="absolute inset-0 bg-gradient-to-bl from-violet-400 via-purple-500 to-indigo-600 opacity-60" style={{clipPath: 'polygon(50% 10%, 10% 90%, 90% 90%)'}}></div>
                 </div>
-                <span>Public Feed • {posts.length} posts from the community</span>
+                <span>Public Feed • {posts.length} posts from the community • Click posts to view</span>
               </>
             ) : (
-              <span>👤 Your Feed • {posts.length} personalized posts</span>
+              <span>👤 Your Feed • {posts.length} personalized posts • Click posts to view</span>
             )}
           </p>
         </div>
@@ -1255,6 +1490,8 @@ const Feed = React.memo(({
             handleShare={handleShare}
             isPublicView={isPublicView}
             onLoginPrompt={onLoginPrompt}
+            onPostClick={onPostClick}
+            isDetailView={false}
           />
         ))}
       </>
@@ -1275,7 +1512,7 @@ const Feed = React.memo(({
   </div>
 ));
 
-// Move Profile component outside to prevent re-creation
+// Profile and Chat components (unchanged)
 const Profile = React.memo(({ user, posts }) => (
   <div className="max-w-4xl mx-auto p-6">
     <div className="bg-gradient-to-r from-slate-900/60 to-zinc-900/60 backdrop-blur-md rounded-2xl p-8 border border-slate-600/40 mb-6">
@@ -1321,7 +1558,6 @@ const Profile = React.memo(({ user, posts }) => (
   </div>
 ));
 
-// Move Chat component outside to prevent re-creation
 const Chat = React.memo(({ 
   chats, 
   selectedChat, 
@@ -1451,13 +1687,15 @@ const Chat = React.memo(({
   </div>
 ));
 
+// Main App Component with individual post viewing
 const SickoScoopApp = () => {
   const [currentView, setCurrentView] = useState('landing');
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [user, setUser] = useState(null);
   const [token, setToken] = useState(null);
   const [posts, setPosts] = useState([]);
-  const [allPosts, setAllPosts] = useState([]); // Store all posts for public feed
+  const [allPosts, setAllPosts] = useState([]);
+  const [selectedPost, setSelectedPost] = useState(null); // New state for individual post viewing
   const [newPost, setNewPost] = useState('');
   const [selectedChat, setSelectedChat] = useState(null);
   const [chatMessage, setChatMessage] = useState('');
@@ -1468,9 +1706,9 @@ const SickoScoopApp = () => {
   const [registerForm, setRegisterForm] = useState({ username: '', email: '', password: '' });
   const [showRegister, setShowRegister] = useState(false);
   const [isClient, setIsClient] = useState(false);
-  const [apiStatus, setApiStatus] = useState('unknown'); // 'connected', 'disconnected', 'unknown'
-  const [feedType, setFeedType] = useState('public'); // 'public' or 'personal'
-  const [isPublicBrowsing, setIsPublicBrowsing] = useState(false); // New state for public browsing
+  const [apiStatus, setApiStatus] = useState('unknown');
+  const [feedType, setFeedType] = useState('public');
+  const [isPublicBrowsing, setIsPublicBrowsing] = useState(false);
   const fileInputRef = useRef(null);
 
   // Fix hydration issues by ensuring client-side only operations
@@ -1514,7 +1752,7 @@ const SickoScoopApp = () => {
   // Enhanced API call helper with better error handling and timeout
   const apiCall = async (endpoint, options = {}, customToken = null) => {
     const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 10000); // 10 second timeout
+    const timeoutId = setTimeout(() => controller.abort(), 10000);
 
     try {
       const authToken = customToken || token || getStorageItem('authToken');
@@ -1530,7 +1768,6 @@ const SickoScoopApp = () => {
 
       clearTimeout(timeoutId);
 
-      // Check if response is ok first
       if (!response.ok) {
         let errorMessage = 'Request failed';
         
@@ -1541,7 +1778,6 @@ const SickoScoopApp = () => {
           errorMessage = `HTTP ${response.status}: ${response.statusText}`;
         }
 
-        // Don't auto-logout on 401 for initial data loading - might be expected
         if (response.status === 401 && !endpoint.includes('/auth/')) {
           console.warn('401 error on', endpoint, '- skipping auto-logout');
           throw new Error('Unauthorized access');
@@ -1550,10 +1786,9 @@ const SickoScoopApp = () => {
         throw new Error(errorMessage);
       }
 
-      // Try to parse JSON response
       const responseText = await response.text();
       if (!responseText) {
-        return {}; // Empty response
+        return {};
       }
 
       try {
@@ -1594,12 +1829,11 @@ const SickoScoopApp = () => {
     }
   };
 
-  // Initialize app data - only run on client
+  // Initialize app data
   useEffect(() => {
     if (!isClient) return;
 
     const initializeApp = async () => {
-      // Test API connection first
       const isApiConnected = await testApiConnection();
       
       const authToken = getStorageItem('authToken');
@@ -1609,13 +1843,11 @@ const SickoScoopApp = () => {
         try {
           const userObj = JSON.parse(userData);
           
-          // Set user data first
           setToken(authToken);
           setUser(userObj);
           setIsLoggedIn(true);
           setCurrentView('feed');
           
-          // Try to validate token with backend, but don't fail if it doesn't work
           try {
             const response = await apiCall('/auth/verify', {
               method: 'POST',
@@ -1625,7 +1857,6 @@ const SickoScoopApp = () => {
             if (response.valid) {
               setUser(response.user || userObj);
               setApiStatus('connected');
-              // Load real data
               await Promise.all([loadPosts(authToken), loadChats(authToken)]);
               return;
             }
@@ -1634,7 +1865,6 @@ const SickoScoopApp = () => {
             setApiStatus('disconnected');
           }
           
-          // If token validation fails, still keep user logged in but use mock data
           loadMockData();
           return;
           
@@ -1645,36 +1875,31 @@ const SickoScoopApp = () => {
         }
       }
 
-      // Production: Start with empty state
-setAllPosts([]);
-setPosts([]);
-setChats([]);
-setApiStatus(isApiConnected ? 'connected' : 'disconnected');
+      setAllPosts([]);
+      setPosts([]);
+      setChats([]);
+      setApiStatus(isApiConnected ? 'connected' : 'disconnected');
     };
 
     initializeApp();
   }, [isClient]);
 
   const loadMockData = () => {
-  // Production: Start with empty arrays - real data comes from backend
-  setAllPosts([]);
-  setPosts([]);
-  setChats([]);
-};
+    setAllPosts([]);
+    setPosts([]);
+    setChats([]);
+  };
 
   // Helper function to update displayed posts based on feed type
   const updateDisplayedPosts = (allPostsData, currentFeedType, currentUser) => {
     if (currentFeedType === 'public') {
-      // Show all posts for public feed
       setPosts(allPostsData);
     } else {
-      // Show only user's posts and posts from followed users for personal feed
       const userPosts = allPostsData.filter(post => 
         post.userId?._id === currentUser?._id || 
         post.userId?.username === currentUser?.username
       );
       
-      // Show only user's own posts for personal feed (no fake followed users)
       setPosts(userPosts.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt)));
     }
   };
@@ -1688,7 +1913,6 @@ setApiStatus(isApiConnected ? 'connected' : 'disconnected');
 
   const loadPosts = async (authToken = null) => {
     try {
-      // Try to load from public feed endpoint first
       const publicResponse = await apiCall('/posts/public', {}, authToken);
       let publicPostsData = [];
       
@@ -1707,7 +1931,6 @@ setApiStatus(isApiConnected ? 'connected' : 'disconnected');
         return;
       }
 
-      // Fallback to regular posts endpoint
       const response = await apiCall('/posts', {}, authToken);
       let postsData = [];
       
@@ -1726,7 +1949,6 @@ setApiStatus(isApiConnected ? 'connected' : 'disconnected');
       }
     } catch (error) {
       console.error('Load posts error:', error);
-      // Don't change API status or show error for 401s, just use mock data
       if (!error.message.includes('Unauthorized')) {
         setApiStatus('disconnected');
       }
@@ -1752,89 +1974,82 @@ setApiStatus(isApiConnected ? 'connected' : 'disconnected');
       }
     } catch (error) {
       console.error('Load chats error:', error);
-      // Don't change API status or show error for 401s, just use mock data
       if (!error.message.includes('Unauthorized')) {
         setApiStatus('disconnected');
       }
     }
   };
 
-const handleLogin = async () => {
-  if (!loginForm.email || !loginForm.password) {
-    setError('Please fill in all fields');
-    return;
-  }
-
-  setLoading(true);
-  setError('');
-
-  try {
-    console.log('🔐 Attempting login with:', { email: loginForm.email });
-    
-    // Test API connection first
-    const isApiConnected = await testApiConnection();
-    
-    if (!isApiConnected) {
-      throw new Error('Cannot connect to server. Using demo mode.');
+  const handleLogin = async () => {
+    if (!loginForm.email || !loginForm.password) {
+      setError('Please fill in all fields');
+      return;
     }
 
-    const response = await fetch(`${API_BASE}/auth/login`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        email: loginForm.email.toLowerCase().trim(),
-        password: loginForm.password
-      }),
-    });
+    setLoading(true);
+    setError('');
 
-    console.log('📥 Login response status:', response.status);
-
-    if (!response.ok) {
-      const errorData = await response.json().catch(() => ({}));
-      console.error('❌ Login failed:', errorData);
-      throw new Error(errorData.message || `Login failed: ${response.statusText}`);
-    }
-
-    const data = await response.json();
-    console.log('✅ Login successful:', data);
-
-    if (data.token && data.user) {
-      // Set everything in the correct order
-      setToken(data.token);
-      setUser(data.user);
-      setStorageItem('authToken', data.token);
-      setStorageItem('userData', JSON.stringify(data.user));
-      setIsLoggedIn(true);
-      setCurrentView('feed');
-      setLoginForm({ email: '', password: '' });
-      setApiStatus('connected');
+    try {
+      console.log('🔐 Attempting login with:', { email: loginForm.email });
       
-      // Small delay to ensure state is updated, then load data with the token
-      setTimeout(async () => {
-        try {
-          await Promise.all([
-            loadPosts(data.token), 
-            loadChats(data.token)
-          ]);
-        } catch (error) {
-          console.warn('Failed to load initial data:', error);
-          // Use mock data as fallback
-          loadMockData();
-        }
-      }, 100);
+      const isApiConnected = await testApiConnection();
       
-    } else {
-      throw new Error('Invalid response from server - missing token or user data');
+      if (!isApiConnected) {
+        throw new Error('Cannot connect to server. Using demo mode.');
+      }
+
+      const response = await fetch(`${API_BASE}/auth/login`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          email: loginForm.email.toLowerCase().trim(),
+          password: loginForm.password
+        }),
+      });
+
+      console.log('📥 Login response status:', response.status);
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        console.error('❌ Login failed:', errorData);
+        throw new Error(errorData.message || `Login failed: ${response.statusText}`);
+      }
+
+      const data = await response.json();
+      console.log('✅ Login successful:', data);
+
+      if (data.token && data.user) {
+        setToken(data.token);
+        setUser(data.user);
+        setStorageItem('authToken', data.token);
+        setStorageItem('userData', JSON.stringify(data.user));
+        setIsLoggedIn(true);
+        setCurrentView('feed');
+        setLoginForm({ email: '', password: '' });
+        setApiStatus('connected');
+        
+        setTimeout(async () => {
+          try {
+            await Promise.all([
+              loadPosts(data.token), 
+              loadChats(data.token)
+            ]);
+          } catch (error) {
+            console.warn('Failed to load initial data:', error);
+            loadMockData();
+          }
+        }, 100);
+        
+      } else {
+        throw new Error('Invalid response from server - missing token or user data');
+      }
+    } catch (error) {
+      console.error('❌ Login error:', error);
+      setError(error.message || 'Login failed. Please check your credentials and try again.');
+    } finally {
+      setLoading(false);
     }
-  } catch (error) {
-    console.error('❌ Login error:', error);
-    
-    // Enhanced demo login fallback
-    setError(error.message || 'Login failed. Please check your credentials and try again.');
-  } finally {
-    setLoading(false);
-  }
-};
+  };
 
   const handleRegister = async () => {
     if (!registerForm.username || !registerForm.email || !registerForm.password) {
@@ -1842,14 +2057,12 @@ const handleLogin = async () => {
       return;
     }
 
-    // Basic email validation
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!emailRegex.test(registerForm.email)) {
       setError('Please enter a valid email address');
       return;
     }
 
-    // Basic password validation
     if (registerForm.password.length < 6) {
       setError('Password must be at least 6 characters long');
       return;
@@ -1859,7 +2072,6 @@ const handleLogin = async () => {
     setError('');
 
     try {
-      // Test API connection first
       const isApiConnected = await testApiConnection();
       
       if (!isApiConnected) {
@@ -1890,7 +2102,6 @@ const handleLogin = async () => {
         setRegisterForm({ username: '', email: '', password: '' });
         setApiStatus('connected');
         
-        // Load real data
         await Promise.all([loadPosts(), loadChats()]);
       } else {
         throw new Error('Invalid response from server');
@@ -1909,15 +2120,15 @@ const handleLogin = async () => {
     setToken(null);
     setUser(null);
     setIsLoggedIn(false);
-    setIsPublicBrowsing(false); // Reset public browsing state
+    setIsPublicBrowsing(false);
     setCurrentView('landing');
+    setSelectedPost(null); // Reset selected post
     setApiStatus('unknown');
     setPosts([]);
     setAllPosts([]);
     setChats([]);
     setError('');
-    setFeedType('public'); // Reset to public feed
-    
+    setFeedType('public');
   };
 
   const handlePost = async () => {
@@ -1925,7 +2136,6 @@ const handleLogin = async () => {
     
     setLoading(true);
     
-    // Create the new post data structure
     const newPostData = {
       _id: Date.now().toString(),
       userId: { 
@@ -1954,7 +2164,6 @@ const handleLogin = async () => {
           throw new Error('Invalid post response');
         }
       } else {
-        // Mock post creation - add to allPosts and update displayed posts
         const updatedAllPosts = [newPostData, ...allPosts];
         setAllPosts(updatedAllPosts);
         updateDisplayedPosts(updatedAllPosts, feedType, user);
@@ -1964,7 +2173,6 @@ const handleLogin = async () => {
     } catch (error) {
       console.error('Post error:', error);
       
-      // Still create post locally as fallback
       const updatedAllPosts = [newPostData, ...allPosts];
       setAllPosts(updatedAllPosts);
       updateDisplayedPosts(updatedAllPosts, feedType, user);
@@ -1977,7 +2185,6 @@ const handleLogin = async () => {
   const handleLike = async (postId) => {
     const userId = user?._id || user?.id || 'demo-user';
     
-    // Update UI optimistically first - update both allPosts and displayed posts
     const updatePostLikes = (postsArray) => {
       return postsArray.map(post => {
         if (post._id === postId) {
@@ -1999,7 +2206,11 @@ const handleLogin = async () => {
     setAllPosts(updatedAllPosts);
     setPosts(updatedDisplayedPosts);
 
-    // Try to sync with backend
+    // Update selected post if it's the one being liked
+    if (selectedPost && selectedPost._id === postId) {
+      setSelectedPost(updatePostLikes([selectedPost])[0]);
+    }
+
     if (apiStatus === 'connected' && token !== 'demo-token') {
       try {
         await apiCall(`/posts/${postId}/like`, {
@@ -2007,42 +2218,26 @@ const handleLogin = async () => {
         }, token);
       } catch (error) {
         console.error('Like error:', error);
-        // Revert optimistic update on error
-        const revertPostLikes = (postsArray) => {
-          return postsArray.map(post => {
-            if (post._id === postId) {
-              const hasLiked = post.likes.includes(userId);
-              return {
-                ...post,
-                likes: hasLiked 
-                  ? [...post.likes, userId]
-                  : post.likes.filter(id => id !== userId)
-              };
-            }
-            return post;
-          });
-        };
-
-        setAllPosts(revertPostLikes(updatedAllPosts));
-        setPosts(revertPostLikes(updatedDisplayedPosts));
+        setAllPosts(allPosts);
+        setPosts(posts);
+        if (selectedPost && selectedPost._id === postId) {
+          setSelectedPost(selectedPost);
+        }
       }
     }
   };
 
   const handleFileUpload = async (files) => {
     console.log('Files selected:', files);
-    // TODO: Implement file upload to backend
   };
 
   const handleSendMessage = () => {
     if (!chatMessage.trim() || !selectedChat) return;
     
-    // Mock message sending for now
     console.log('Sending message:', chatMessage, 'to:', selectedChat.participants[0]?.username);
     setChatMessage('');
   };
 
-    // Enhanced comment handler
   const handleComment = useCallback((postId, commentText) => {
     const newComment = {
       user: { username: user?.username || 'You', _id: user?._id || user?.id },
@@ -2050,7 +2245,6 @@ const handleLogin = async () => {
       createdAt: new Date()
     };
 
-    // Update posts state
     const updatePostComments = (postsArray) => {
       return postsArray.map(post => {
         if (post._id === postId) {
@@ -2066,68 +2260,78 @@ const handleLogin = async () => {
     setPosts(updatePostComments);
     setAllPosts(updatePostComments);
 
-    // Optional: Send to backend
+    // Update selected post if it's the one being commented on
+    if (selectedPost && selectedPost._id === postId) {
+      setSelectedPost(prev => ({
+        ...prev,
+        comments: [...(prev.comments || []), newComment]
+      }));
+    }
+
     if (apiStatus === 'connected' && token !== 'demo-token') {
       apiCall(`/posts/${postId}/comments`, {
         method: 'POST',
         body: JSON.stringify({ content: commentText })
       }, token).catch(console.error);
     }
-  }, [user, apiStatus, token, setPosts, setAllPosts, apiCall]);
+  }, [user, apiStatus, token, selectedPost]);
 
-  // Enhanced share handler
   const handleShare = useCallback((postId) => {
-    // Copy link to clipboard
     const postUrl = `${window.location.origin}/post/${postId}`;
     navigator.clipboard.writeText(postUrl).then(() => {
       console.log('Link copied to clipboard!');
-      // You could add a toast notification here
     }).catch(console.error);
   }, []);
 
-  // Handle public browsing
-  // Handle public browsing
-const handleBrowsePublic = async () => {
-  setIsPublicBrowsing(true);
-  setCurrentView('publicFeed');
-  
-  // Actually load real posts from API instead of mock data
-  try {
-    console.log('🌐 Loading public posts for browsing...');
+  // New function to handle clicking on a post to view individually
+  const handlePostClick = (post) => {
+    setSelectedPost(post);
+    setCurrentView('post');
+  };
+
+  // New function to go back to feed from individual post view
+  const handleBackToFeed = () => {
+    setSelectedPost(null);
+    setCurrentView('feed');
+  };
+
+  const handleBrowsePublic = async () => {
+    setIsPublicBrowsing(true);
+    setCurrentView('publicFeed');
     
-    const response = await fetch(`${API_BASE}/posts/public`);
-    if (!response.ok) {
-      throw new Error(`HTTP ${response.status}: ${response.statusText}`);
-    }
-    
-    const publicPostsData = await response.json();
-    console.log('✅ Public posts loaded:', publicPostsData.length);
-    
-    if (Array.isArray(publicPostsData) && publicPostsData.length > 0) {
-      setAllPosts(publicPostsData);
-      setPosts(publicPostsData); // Show all public posts in public view
-      console.log('✅ Posts set in state:', publicPostsData.length);
-    } else {
-      console.log('⚠️ No public posts found');
+    try {
+      console.log('🌐 Loading public posts for browsing...');
+      
+      const response = await fetch(`${API_BASE}/posts/public`);
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+      }
+      
+      const publicPostsData = await response.json();
+      console.log('✅ Public posts loaded:', publicPostsData.length);
+      
+      if (Array.isArray(publicPostsData) && publicPostsData.length > 0) {
+        setAllPosts(publicPostsData);
+        setPosts(publicPostsData);
+        console.log('✅ Posts set in state:', publicPostsData.length);
+      } else {
+        console.log('⚠️ No public posts found');
+        setAllPosts([]);
+        setPosts([]);
+      }
+    } catch (error) {
+      console.error('❌ Error loading public posts:', error);
       setAllPosts([]);
       setPosts([]);
     }
-  } catch (error) {
-    console.error('❌ Error loading public posts:', error);
-    // Fallback to empty state
-    setAllPosts([]);
-    setPosts([]);
-  }
-};
+  };
 
-  // Handle login prompt from public view
   const handleLoginPrompt = () => {
     setIsPublicBrowsing(false);
     setCurrentView('landing');
     setShowRegister(false);
   };
 
-  // Handle back to home from public view
   const handleBackToHome = () => {
     setIsPublicBrowsing(false);
     setCurrentView('landing');
@@ -2146,7 +2350,6 @@ const handleBrowsePublic = async () => {
   if (isPublicBrowsing && currentView === 'publicFeed') {
     return (
       <div className="min-h-screen bg-gradient-to-br from-gray-900 via-slate-900 to-zinc-900 relative overflow-hidden border-4 border-orange-600/80">
-        {/* Background Effects */}
         <div className="absolute inset-0 opacity-8">
           <div className="absolute top-20 left-1/4 w-64 h-64 bg-gradient-to-r from-purple-800 to-indigo-700 rounded-full blur-3xl animate-pulse"></div>
           <div className="absolute bottom-20 right-1/4 w-80 h-80 bg-gradient-to-r from-slate-700 to-zinc-600 rounded-full blur-3xl animate-pulse delay-1000"></div>
@@ -2171,6 +2374,7 @@ const handleBrowsePublic = async () => {
               isPublicView={true}
               onLoginPrompt={handleLoginPrompt}
               onBackToHome={handleBackToHome}
+              onPostClick={handleLoginPrompt} // Redirect to login when clicking posts in public view
             />
           </main>
         </div>
@@ -2219,6 +2423,8 @@ const handleBrowsePublic = async () => {
           apiStatus={apiStatus}
           handleLogout={handleLogout}
           user={user}
+          selectedPost={selectedPost}
+          onBackToFeed={handleBackToFeed}
         />
         <main className="container mx-auto">
           {currentView === 'feed' && (
@@ -2232,11 +2438,24 @@ const handleBrowsePublic = async () => {
               handleFileUpload={handleFileUpload}
               posts={posts}
               handleLike={handleLike}
+              handleComment={handleComment}
+              handleShare={handleShare}
               feedType={feedType}
               setFeedType={setFeedType}
               isPublicView={false}
               onLoginPrompt={() => {}}
               onBackToHome={() => {}}
+              onPostClick={handlePostClick} // Pass the post click handler
+            />
+          )}
+          {currentView === 'post' && (
+            <PostDetail 
+              post={selectedPost}
+              user={user}
+              handleLike={handleLike}
+              handleComment={handleComment}
+              handleShare={handleShare}
+              onBackToFeed={handleBackToFeed}
             />
           )}
           {currentView === 'profile' && (
