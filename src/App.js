@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react';
-import { Heart, MessageCircle, Share2, Send, Upload, Image, Video, FileText, Mic, User, Search, Settings, Plus, X, MoreHorizontal, Flag, Bookmark, Eye, ArrowLeft, Clock, Users, Copy, ExternalLink, Twitter, Facebook, Linkedin } from 'lucide-react';
+import { Heart, MessageCircle, Share2, Send, Upload, Image, Video, FileText, Mic, User, Search, Settings, Plus, X, MoreHorizontal, Flag, Bookmark, Eye, ArrowLeft, Clock, Users, Copy, ExternalLink, Twitter, Facebook, Linkedin, CheckCircle, AlertCircle } from 'lucide-react';
 
 const API_BASE = window.location.hostname === 'localhost' 
   ? 'http://localhost:3001/api'
@@ -690,7 +690,7 @@ const Header = React.memo(({
   );
 });
 
-// PostCreator component (unchanged)
+// Enhanced PostCreator component with complete file upload functionality
 const PostCreator = React.memo(({ 
   user, 
   newPost, 
@@ -700,33 +700,135 @@ const PostCreator = React.memo(({
   fileInputRef, 
   handleFileUpload 
 }) => {
-  const [uploadState, setUploadState] = useState({
-    pdf: false,
-    audio: false,
-    video: false,
-    photo: false
-  });
+  const [uploadedFiles, setUploadedFiles] = useState([]);
+  const [uploadProgress, setUploadProgress] = useState({});
+  const [isUploading, setIsUploading] = useState(false);
 
   const pdfInputRef = useRef(null);
   const audioInputRef = useRef(null);
   const videoInputRef = useRef(null);
   const photoInputRef = useRef(null);
 
-  const handleFileSelect = (type, files) => {
-    setUploadState(prev => ({
-      ...prev,
-      [type]: files && files.length > 0
-    }));
-    if (handleFileUpload) {
-      handleFileUpload(files);
+  // Handle file selection for specific types
+  // Handle file selection for specific types
+const handleFileSelect = async (type, files) => {
+  console.log('🔄 handleFileSelect called:', type, files?.length); // ADD THIS LINE
+  if (!files || files.length === 0) return;
+
+    const fileArray = Array.from(files);
+    
+    // Validate file types
+    const allowedTypes = {
+      pdf: ['application/pdf'],
+      audio: ['audio/mpeg', 'audio/wav', 'audio/ogg', 'audio/mp3', 'audio/mp4'],
+      video: ['video/mp4', 'video/mpeg', 'video/quicktime', 'video/webm'],
+      photo: ['image/jpeg', 'image/png', 'image/gif', 'image/webp']
+    };
+
+    const validFiles = fileArray.filter(file => {
+      if (allowedTypes[type].includes(file.type)) {
+        return true;
+      }
+      console.warn(`Invalid file type for ${type}:`, file.type);
+      return false;
+    });
+
+    if (validFiles.length === 0) {
+      alert(`Please select valid ${type} files.`);
+      return;
+    }
+
+    await uploadFiles(validFiles);
+  };
+
+  // Upload files to backend
+  // Upload files to backend
+const uploadFiles = async (files) => {
+  console.log('🚀 uploadFiles called with:', files?.length, 'files'); // ADD THIS LINE
+  if (!files || files.length === 0) return;
+
+    setIsUploading(true);
+    const formData = new FormData();
+    
+    Array.from(files).forEach(file => {
+      formData.append('files', file);
+    });
+
+    try {
+      console.log('📤 Uploading files:', files.length);
+      
+      const token = localStorage.getItem('authToken');
+      const response = await fetch(`${API_BASE}/media/upload`, {
+        method: 'POST',
+        headers: {
+          'Authorization': token ? `Bearer ${token}` : '',
+        },
+        body: formData,
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.message || `Upload failed: ${response.statusText}`);
+      }
+
+      const result = await response.json();
+      console.log('✅ Upload successful:', result);
+
+      if (result.files && Array.isArray(result.files)) {
+  setUploadedFiles(prev => [...prev, ...result.files]);
+  console.log('📁 Files added to state:', result.files.length); // ADD THIS LINE
+} else {
+        throw new Error('Invalid response format from server');
+      }
+
+    } catch (error) {
+      console.error('❌ Upload error:', error);
+      alert(`Upload failed: ${error.message}`);
+    } finally {
+      setIsUploading(false);
     }
   };
 
-  const hasContent = newPost.trim() || 
-                    uploadState.pdf || 
-                    uploadState.audio || 
-                    uploadState.video || 
-                    uploadState.photo;
+  // Remove uploaded file
+  const removeFile = (index) => {
+    setUploadedFiles(prev => prev.filter((_, i) => i !== index));
+  };
+
+  // Check if we have content to post
+  const hasContent = newPost.trim() || uploadedFiles.length > 0;
+
+  // Handle post submission with files
+  const handleSubmitPost = async () => {
+    if (!hasContent) return;
+
+    try {
+      // Pass the uploaded files to the parent component
+      await handlePost(uploadedFiles);
+      
+      // Clear uploaded files after successful post
+      setUploadedFiles([]);
+      
+      // Clear file input values
+      if (pdfInputRef.current) pdfInputRef.current.value = '';
+      if (audioInputRef.current) audioInputRef.current.value = '';
+      if (videoInputRef.current) videoInputRef.current.value = '';
+      if (photoInputRef.current) photoInputRef.current.value = '';
+      
+    } catch (error) {
+      console.error('Post submission error:', error);
+    }
+  };
+
+  // Get file type icon
+  const getFileIcon = (file) => {
+    switch (file.type) {
+      case 'image': return <Image className="h-4 w-4" />;
+      case 'video': return <Video className="h-4 w-4" />;
+      case 'audio': return <Mic className="h-4 w-4" />;
+      case 'pdf': return <FileText className="h-4 w-4" />;
+      default: return <FileText className="h-4 w-4" />;
+    }
+  };
 
   return (
     <div className="bg-gradient-to-r from-slate-900/60 to-zinc-900/60 backdrop-blur-md rounded-2xl p-6 border border-slate-600/40 mb-6">
@@ -743,17 +845,61 @@ const PostCreator = React.memo(({
             rows="3"
           />
           
+          {/* Uploaded Files Preview */}
+          {uploadedFiles.length > 0 && (
+            <div className="mt-4 space-y-3">
+              <h4 className="text-sm font-medium text-slate-300 flex items-center space-x-2">
+                <CheckCircle className="h-4 w-4 text-green-400" />
+                <span>Uploaded Files ({uploadedFiles.length})</span>
+              </h4>
+              <div className="grid gap-3">
+                {uploadedFiles.map((file, index) => (
+                  <div key={index} className="flex items-center justify-between p-3 bg-black/30 rounded-lg border border-slate-600/30">
+                    <div className="flex items-center space-x-3">
+                      <div className="p-2 bg-slate-700/50 rounded-lg text-slate-300">
+                        {getFileIcon(file)}
+                      </div>
+                      <div>
+                        <p className="text-white font-medium text-sm">{file.filename}</p>
+                        <p className="text-slate-400 text-xs">
+                          {file.type.toUpperCase()} • {(file.size / 1024 / 1024).toFixed(1)} MB
+                        </p>
+                      </div>
+                    </div>
+                    <button
+                      onClick={() => removeFile(index)}
+                      className="p-1 text-slate-400 hover:text-red-400 hover:bg-red-500/10 rounded transition-colors"
+                      title="Remove file"
+                    >
+                      <X className="h-4 w-4" />
+                    </button>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Upload Progress */}
+          {isUploading && (
+            <div className="mt-3 p-3 bg-blue-500/10 border border-blue-500/30 rounded-lg">
+              <div className="flex items-center space-x-2">
+                <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-400"></div>
+                <span className="text-blue-400 text-sm">Uploading files...</span>
+              </div>
+            </div>
+          )}
+          
           <div className="mt-2 flex justify-end">
             <button
-              onClick={handlePost}
-              disabled={!hasContent || loading}
+              onClick={handleSubmitPost}
+              disabled={!hasContent || loading || isUploading}
               className={`flex items-center justify-center space-x-2 px-6 py-3 rounded-lg transition-colors border-2 text-base font-semibold ${
-                hasContent && !loading
+                hasContent && !loading && !isUploading
                   ? 'bg-slate-700/60 text-slate-300 hover:bg-slate-700 border-amber-600/50 hover:border-amber-500 cursor-pointer'
                   : 'bg-slate-700/30 text-slate-500 border-amber-600/30 cursor-not-allowed opacity-50'
               }`}
             >
-              <span>{loading ? 'Posting...' : 'Post'}</span>
+              <span>{loading ? 'Posting...' : isUploading ? 'Uploading...' : 'Post'}</span>
             </button>
           </div>
           
@@ -761,108 +907,120 @@ const PostCreator = React.memo(({
             <div className="flex flex-wrap gap-2 justify-end">
               <button 
                 onClick={() => pdfInputRef.current?.click()}
+                disabled={isUploading}
                 className={`flex items-center space-x-2 px-3 py-2 rounded-lg transition-colors border-2 text-sm ${
-                  uploadState.pdf
-                    ? 'bg-slate-700/60 text-slate-300 hover:bg-slate-700 border-amber-600/50 hover:border-amber-500'
-                    : 'bg-slate-700/30 text-slate-500 border-amber-600/30 opacity-50 hover:opacity-70'
+                  isUploading
+                    ? 'bg-slate-700/20 text-slate-600 border-amber-600/20 cursor-not-allowed'
+                    : 'bg-slate-700/30 text-slate-500 border-amber-600/30 opacity-50 hover:opacity-70 hover:bg-slate-700/40 hover:text-slate-400'
                 }`}
               >
                 <FileText className="h-4 w-4" />
                 <span>PDF</span>
-                {uploadState.pdf && (
-                  <div className="w-2 h-2 bg-green-500 rounded-full"></div>
-                )}
               </button>
               
               <button 
                 onClick={() => audioInputRef.current?.click()}
+                disabled={isUploading}
                 className={`flex items-center space-x-2 px-3 py-2 rounded-lg transition-colors border-2 text-sm ${
-                  uploadState.audio
-                    ? 'bg-slate-700/60 text-slate-300 hover:bg-slate-700 border-amber-600/50 hover:border-amber-500'
-                    : 'bg-slate-700/30 text-slate-500 border-amber-600/30 opacity-50 hover:opacity-70'
+                  isUploading
+                    ? 'bg-slate-700/20 text-slate-600 border-amber-600/20 cursor-not-allowed'
+                    : 'bg-slate-700/30 text-slate-500 border-amber-600/30 opacity-50 hover:opacity-70 hover:bg-slate-700/40 hover:text-slate-400'
                 }`}
               >
                 <Mic className="h-4 w-4" />
                 <span>Audio</span>
-                {uploadState.audio && (
-                  <div className="w-2 h-2 bg-green-500 rounded-full"></div>
-                )}
               </button>
               
               <button 
                 onClick={() => videoInputRef.current?.click()}
+                disabled={isUploading}
                 className={`flex items-center space-x-2 px-3 py-2 rounded-lg transition-colors border-2 text-sm ${
-                  uploadState.video
-                    ? 'bg-slate-700/60 text-slate-300 hover:bg-slate-700 border-amber-600/50 hover:border-amber-500'
-                    : 'bg-slate-700/30 text-slate-500 border-amber-600/30 opacity-50 hover:opacity-70'
+                  isUploading
+                    ? 'bg-slate-700/20 text-slate-600 border-amber-600/20 cursor-not-allowed'
+                    : 'bg-slate-700/30 text-slate-500 border-amber-600/30 opacity-50 hover:opacity-70 hover:bg-slate-700/40 hover:text-slate-400'
                 }`}
               >
                 <Video className="h-4 w-4" />
                 <span>Video</span>
-                {uploadState.video && (
-                  <div className="w-2 h-2 bg-green-500 rounded-full"></div>
-                )}
               </button>
               
               <button
                 onClick={() => photoInputRef.current?.click()}
+                disabled={isUploading}
                 className={`flex items-center space-x-2 px-3 py-2 rounded-lg transition-colors border-2 text-sm ${
-                  uploadState.photo
-                    ? 'bg-slate-700/60 text-slate-300 hover:bg-slate-700 border-amber-600/50 hover:border-amber-500'
-                    : 'bg-slate-700/30 text-slate-500 border-amber-600/30 opacity-50 hover:opacity-70'
+                  isUploading
+                    ? 'bg-slate-700/20 text-slate-600 border-amber-600/20 cursor-not-allowed'
+                    : 'bg-slate-700/30 text-slate-500 border-amber-600/30 opacity-50 hover:opacity-70 hover:bg-slate-700/40 hover:text-slate-400'
                 }`}
               >
                 <Image className="h-4 w-4" />
                 <span>Photo</span>
-                {uploadState.photo && (
-                  <div className="w-2 h-2 bg-green-500 rounded-full"></div>
-                )}
               </button>
             </div>
           </div>
         </div>
       </div>
       
+      {/* Hidden File Inputs */}
+    <input
+  ref={pdfInputRef}
+  type="file"
+  accept=".pdf"
+  multiple
+  onChange={(e) => {
+    console.log('📁 PDF files selected:', e.target.files.length); // ADD THIS
+    handleFileSelect('pdf', e.target.files);
+  }}
+  className="hidden"
+/>
       <input
-        ref={pdfInputRef}
-        type="file"
-        accept=".pdf"
-        onChange={(e) => handleFileSelect('pdf', e.target.files)}
-        className="hidden"
-      />
+  ref={audioInputRef}
+  type="file"
+  accept="audio/*"
+  multiple
+  onChange={(e) => {
+    console.log('🎵 Audio files selected:', e.target.files.length); // ADD THIS
+    handleFileSelect('audio', e.target.files);
+  }}
+  className="hidden"
+/>
       <input
-        ref={audioInputRef}
-        type="file"
-        accept="audio/*"
-        onChange={(e) => handleFileSelect('audio', e.target.files)}
-        className="hidden"
-      />
+  ref={videoInputRef}
+  type="file"
+  accept="video/*"
+  multiple
+  onChange={(e) => {
+    console.log('📹 Video files selected:', e.target.files.length); // ADD THIS
+    handleFileSelect('video', e.target.files);
+  }}
+  className="hidden"
+/>
       <input
-        ref={videoInputRef}
-        type="file"
-        accept="video/*"
-        onChange={(e) => handleFileSelect('video', e.target.files)}
-        className="hidden"
-      />
-      <input
-        ref={photoInputRef}
-        type="file"
-        accept="image/*"
-        onChange={(e) => handleFileSelect('photo', e.target.files)}
-        className="hidden"
-      />
+  ref={photoInputRef}
+  type="file"
+  accept="image/*"
+  multiple
+  onChange={(e) => {
+    console.log('📸 Photo files selected:', e.target.files.length); // ADD THIS
+    handleFileSelect('photo', e.target.files);
+  }}
+  className="hidden"
+/>
       
       <input
         ref={fileInputRef}
         type="file"
         multiple
         accept="image/*,video/*,audio/*,.pdf"
-        onChange={(e) => handleFileUpload(e.target.files)}
+        onChange={(e) => uploadFiles(e.target.files)}
         className="hidden"
       />
     </div>
   );
 });
+
+// Rest of the components remain the same...
+// [Include all other components exactly as they were]
 
 // Enhanced Post component with sharing and timestamps
 const Post = React.memo(({ 
@@ -1873,7 +2031,7 @@ const Chat = React.memo(({
   </div>
 ));
 
-// Main App Component with URL routing
+// Main App Component with URL routing and enhanced file upload
 const SickoScoopApp = () => {
   const [currentView, setCurrentView] = useState('landing');
   const [isLoggedIn, setIsLoggedIn] = useState(false);
@@ -2347,8 +2505,9 @@ const SickoScoopApp = () => {
     setFeedType('public');
   };
 
-  const handlePost = async () => {
-    if (!newPost.trim()) return;
+  // Enhanced handlePost function with file support
+  const handlePost = async (uploadedFiles = []) => {
+    if (!newPost.trim() && uploadedFiles.length === 0) return;
     
     setLoading(true);
     
@@ -2360,6 +2519,7 @@ const SickoScoopApp = () => {
         _id: user?._id || 'demo-user'
       },
       content: newPost,
+      mediaFiles: uploadedFiles, // Include uploaded files
       likes: [],
       comments: [],
       createdAt: new Date()
@@ -2369,7 +2529,10 @@ const SickoScoopApp = () => {
       if (apiStatus === 'connected' && token !== 'demo-token') {
         const response = await apiCall('/posts', {
           method: 'POST',
-          body: JSON.stringify({ content: newPost }),
+          body: JSON.stringify({ 
+            content: newPost,
+            mediaFiles: uploadedFiles // Send files to backend
+          }),
         }, token);
 
         if (response._id || response.id) {
